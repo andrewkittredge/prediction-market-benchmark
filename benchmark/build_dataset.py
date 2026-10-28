@@ -19,7 +19,8 @@ MLflow evaluation datasets need a SQL tracking store, hence the sqlite default.
 import argparse
 import logging
 
-from mlflow.genai.datasets import get_dataset
+import mlflow
+from mlflow.genai.datasets import create_dataset, get_dataset
 from snowflake.snowpark.session import Session
 
 from benchmark.records import mlflow_records_from_pandas
@@ -73,21 +74,25 @@ order by exchange, event_ticker, outcome
 """
 
 
-EXPERIMENT_NAME = "forecasting-v3"
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--name", default="forecasting-v2")
-
+    parser.add_argument("--dataset-name", default="prediction-markets")
+    parser.add_argument("--experiment-name", default="prediction-markets-experiment")
     args = parser.parse_args()
-
-    with Session.builder.create() as session:
+    dataset_name = args.dataset_name
+    experiment_name = args.experiment_name
+    # credentials come from ~/.snowflake/connections.toml, not the environment
+    with Session.builder.config(
+        "connection_name", "prediction-markets"
+    ).create() as session:
         snowpark_df = session.sql(_QUERY_TEMPLATE)
         local_pandas_df = snowpark_df.to_pandas()
     records = mlflow_records_from_pandas(local_pandas_df)
-
-    dataset = get_dataset(name=args.name)
+    mlflow.set_experiment(experiment_name=experiment_name)
+    try:
+        dataset = get_dataset(name=dataset_name)
+    except mlflow.MlflowException:
+        dataset = create_dataset(name=dataset_name)
     dataset.merge_records(records)
 
 

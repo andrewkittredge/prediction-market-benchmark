@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "build_dataset (smoke)",
+            "name": "build_dataset (markets)",
             "type": "debugpy",
             "request": "launch",
             "module": "benchmark.build_dataset",
-            "args": ["--name", "smoke"],
+            "args": [],
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/.env",
@@ -18,7 +18,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "benchmark.evaluate",
-            "args": ["--dataset-name", "smoke", "--max-rows", "2"],
+            "args": [
+                "--dataset-name",
+                "markets",
+                "--max-rows",
+                "2"
+            ],
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "envFile": "${workspaceFolder}/.env",

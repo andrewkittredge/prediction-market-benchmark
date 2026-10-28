@@ -34,8 +34,10 @@ Snowflake engine and models; that repo's `CLAUDE.md` documents the data.
 
 ## Commands
 
-Run from this folder. Credentials (`SNOWFLAKE_*`, `ANTHROPIC_API_KEY`) come
-from the gitignored `.env` here, a copy of the one at the sibling repo's root.
+Run from this folder. `ANTHROPIC_API_KEY` comes from the gitignored `.env`
+here, a copy of the one at the sibling repo's root. Snowflake credentials come
+from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
+(`config.SNOWFLAKE_CONNECTION`), not from the environment.
 
 ```bash
 uv sync
