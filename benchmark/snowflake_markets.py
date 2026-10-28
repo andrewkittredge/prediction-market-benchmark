@@ -40,7 +40,7 @@ with first_price as (
     where event_category in (
             'politics', 'companies', 'finance', 'elections', 'economics'
         )
-        and std_event_type not in ('share price')
+        and coalesce(std_event_type, '') <> 'share price' // exclude share price markets, not very interesting
         and price is not null
         and outcome is not null
         and price_time is not null
