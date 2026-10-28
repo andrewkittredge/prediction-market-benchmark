@@ -1,0 +1,155 @@
+"""
+Runs an LLM against the forecasting benchmark with mlflow.genai.evaluate.
+
+    cd prediction-market-benchmark
+    set ANTHROPIC_API_KEY=...
+    uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10
+    uv run python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-opus-5-5 claude-haiku-4-5
+
+    # forecast with a local Claude Code agent (claude-agent-sdk) instead of
+    # the Messages API; see predict_agent.py
+    uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10 --agent
+
+Each invocation is one parent MLflow run with a nested child run per
+(model, system prompt) pair — every --model crossed with every --prompt
+(default: all of benchmark.prompt.SYSTEM_PROMPTS) — all over the same sample
+of rows.
+
+Results land in the MLflow experiment "prediction-market-forecasting" at the
+tracking URI; browse them with
+    uv run mlflow-ui
+"""
+
+import argparse
+import itertools
+import logging
+from datetime import datetime
+from functools import partial
+
+import mlflow
+
+# Work around an import deadlock in mlflow 3.17: the first scorer call imports
+# mlflow.server.jobs.utils on a worker thread (via telemetry), which fires a
+# post-import hook that loads most of mlflow.genai, while predict threads are
+# lazily importing the token-cost modules; the threads then wait on each
+# other's import locks forever. Importing it once here, single-threaded,
+# before evaluate() starts its thread pools avoids the race.
+import mlflow.server.jobs.utils  # noqa: E402,F401
+from mlflow.genai.datasets import get_dataset
+
+from benchmark.config import EXPERIMENT_NAME
+from benchmark.predict import MAX_TOKENS, predict
+from benchmark.predict_agent import predict_with_agent
+from benchmark.prompt import SYSTEM_PROMPTS
+from benchmark.scorers import squared_error
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+
+# Training data cutoff per model, hand-copied from each model's page under
+# https://platform.claude.com/docs/en/models/ (the Models API doesn't report
+# it). Older models have earlier cutoffs, so more of the dataset's markets
+# closed after what they could have seen. Logged on the run so results can be judged against
+# the leakage caveat in README.md.
+TRAINING_DATA_CUTOFF = {
+    "claude-fable-5-1": "2026-06",
+    "claude-opus-5-5": "2026-06",
+    "claude-sonnet-5-5": "2026-06",
+    "claude-haiku-5-5": "2026-06",
+    "claude-opus-5": "2026-05",
+    "claude-fable-5": "2026-01",
+    "claude-sonnet-5": "2026-01",
+    "claude-opus-4-8": "2026-01",
+    "claude-opus-4-7": "2026-01",
+    "claude-sonnet-4-6": "2026-01",
+    "claude-opus-4-6": "2025-08",
+    "claude-opus-4-5": "2025-08",
+    "claude-sonnet-4-5": "2025-07",
+    "claude-haiku-4-5": "2025-07",
+}
+
+
+def load_data(dataset_name: str, max_rows: int | None):
+
+    dataset = get_dataset(name=dataset_name)
+    if max_rows is None:
+        return dataset
+    # dataset order is by exchange and ticker, so a head() slice would be all
+    # Kalshi; a fixed-seed sample is representative and the same on every run
+    frame = dataset.to_df()
+    return frame.sample(n=min(max_rows, len(frame)), random_state=0)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument(
+        "--dataset-name", required=True, help="MLflow evaluation dataset name"
+    )
+    parser.add_argument(
+        "--model",
+        nargs="+",
+        choices=TRAINING_DATA_CUTOFF,
+        metavar="MODEL",
+        help="Anthropic model id(s) to sweep; default %(default)s",
+    )
+    parser.add_argument(
+        "--prompt",
+        nargs="+",
+        default=list(SYSTEM_PROMPTS),
+        choices=SYSTEM_PROMPTS,
+        metavar="PROMPT",
+        help="system prompt(s) from benchmark.prompt.SYSTEM_PROMPTS to sweep; "
+        "default all (%(default)s)",
+    )
+    parser.add_argument(
+        "--max-rows", type=int, default=100, help="Limit the number of rows to evaluate"
+    )
+    parser.add_argument(
+        "--agent",
+        action="store_true",
+        help="forecast with a local Claude Code agent (web search enabled) "
+        "instead of a single Messages API call",
+    )
+
+    parser.add_argument("--run-name")
+    args = parser.parse_args()
+
+    mlflow.set_experiment(EXPERIMENT_NAME)
+
+    data = load_data(args.dataset_name, args.max_rows)
+    run_name = args.run_name or f"sweep-{datetime.now():%Y%m%d-%H%M}"
+    # a parent run per invocation holding the shared settings, with one child
+    # run per (model, system prompt) pair, all on the same sample, so models
+    # and prompts can be compared trace-for-trace
+    with mlflow.start_run(run_name=run_name):
+        mlflow.log_params(
+            {
+                "dataset": args.dataset_name,
+                "max_rows": args.max_rows or "all",
+                "backend": "agent" if args.agent else "api",
+            }
+        )
+        for model_name, system_prompt in itertools.product(args.model, args.prompt):
+            if args.agent:
+                predict_fn = partial(predict_with_agent, model_name, system_prompt)
+            else:
+                predict_fn = partial(predict, model_name, MAX_TOKENS, system_prompt)
+            with mlflow.start_run(
+                run_name=f"{model_name}-{system_prompt}", nested=True
+            ):
+                mlflow.set_active_model(name=model_name)
+                mlflow.set_tag("training_data_cutoff", TRAINING_DATA_CUTOFF[model_name])
+                mlflow.log_params({"system_prompt": system_prompt})
+                mlflow.genai.evaluate(
+                    data=data,
+                    predict_fn=predict_fn,
+                    scorers=[
+                        # return_output, abs_error_vs_market,
+                        squared_error
+                    ],
+                )
+
+
+if __name__ == "__main__":
+    main()

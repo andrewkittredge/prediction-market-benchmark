@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.env
+# MLflow artifact root written by runs started from this folder
+mlruns/
+.ipynb_checkpoints/
