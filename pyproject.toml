@@ -14,8 +14,8 @@ dependencies = [
     "prediction-markets",
     "scipy>=1.17.1",
     # mlflow 3.17's SQL store imports ORMSelectCompileState, removed in SQLAlchemy 2.1
+    "snowflake-snowpark-python>=1.30",
     "sqlalchemy<2.1",
-    "sqlmodel>=0.0.39",
     "statsmodels>=0.15.0",
     "tenacity>=9.1.4",
 ]

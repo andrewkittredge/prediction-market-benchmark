@@ -7,8 +7,9 @@ frozen at its first observed price: the model is asked for P(outcome) as of
 that moment and scored against the market's own price and, where the market
 has since resolved, against whether the outcome occurred.
 
-    cd scripts/benchmark
-    uv run python -m benchmark.build_dataset --name smoke --exchange kalshi
+    # from the project root (`benchmark` is not installed, so `-m` needs the
+    # root on sys.path)
+    uv run --env-file .env python -m benchmark.build_dataset --name smoke
     uv run python -m benchmark.build_dataset --name forecasting-v2
 
 Registers (or merges into) an MLflow evaluation dataset of the given name.
@@ -17,15 +18,11 @@ MLflow evaluation datasets need a SQL tracking store, hence the sqlite default.
 
 import argparse
 import logging
-from collections import Counter
-from datetime import datetime, timezone
 
-from sqlalchemy import text
-from sqlmodel import Session
+from mlflow.genai.datasets import get_dataset
+from snowflake.snowpark.session import Session
 
-from benchmark.config import EXPERIMENT_NAME
-from benchmark.records import BenchmarkRecord
-from prediction_markets.database.engine import create_db_engine
+from benchmark.records import mlflow_records_from_pandas
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -76,40 +73,7 @@ order by exchange, event_ticker, outcome
 """
 
 
-def fetch_records(
-    session: Session,
-) -> list[BenchmarkRecord]:
-    rows = session.execute(text(_QUERY_TEMPLATE)).all()
-    return [BenchmarkRecord.from_row(row) for row in rows]
-
-
-def register_with_mlflow(records: list[BenchmarkRecord], name: str, tags: dict) -> str:
-    import mlflow
-    from mlflow.genai.datasets import create_dataset, get_dataset, set_dataset_tags
-
-    experiment = mlflow.set_experiment(EXPERIMENT_NAME)
-    logger.info("mlflow tracking uri %s", mlflow.get_tracking_uri())
-    try:
-        dataset = get_dataset(name=name)
-        logger.info("mlflow dataset %r exists; merging records into it", name)
-    except Exception:
-        dataset = create_dataset(
-            name=name, experiment_id=experiment.experiment_id, tags=tags
-        )
-        logger.info("created mlflow dataset %r (%s)", name, dataset.dataset_id)
-    else:
-        set_dataset_tags(dataset_id=dataset.dataset_id, tags=tags)
-    dataset.merge_records([r.to_mlflow_record() for r in records])
-    return dataset.dataset_id
-
-
-def summarize(records: list[BenchmarkRecord]) -> str:
-    counts = Counter(r.exchange for r in records)
-    resolved = Counter(r.exchange for r in records if r.outcome_occurred is not None)
-    lines = [f"{len(records)} records"]
-    for exchange, n in sorted(counts.items(), key=lambda kv: -kv[1]):
-        lines.append(f"  {n:6d}  {exchange}  ({resolved[exchange]} resolved)")
-    return "\n".join(lines)
+EXPERIMENT_NAME = "forecasting-v3"
 
 
 def main() -> None:
@@ -118,20 +82,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    with Session(create_db_engine()) as session:
-        records = fetch_records(session)
-    if not records:
-        raise SystemExit("query returned no markets")
-    logger.info("%s", summarize(records))
+    with Session.builder.create() as session:
+        snowpark_df = session.sql(_QUERY_TEMPLATE)
+        local_pandas_df = snowpark_df.to_pandas()
+    records = mlflow_records_from_pandas(local_pandas_df)
 
-    tags = {
-        "categories": "politics,companies,finance,elections,economics",
-        "snapshot": "first_observed_price",
-        "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "n_records": str(len(records)),
-    }
-    dataset_id = register_with_mlflow(records, args.name, tags)
-    logger.info("mlflow dataset %r id=%s", args.name, dataset_id)
+    dataset = get_dataset(name=args.name)
+    dataset.merge_records(records)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ here is one small uv project:
 
 - `benchmark/` — the code, imported as `benchmark.*` from the project root
   (`[tool.uv] package = false`; nothing is installed as a package).
-  - `build_dataset.py` — Snowflake query → `BenchmarkRecord`s (`records.py`)
+  - `build_dataset.py` — Snowpark query → pandas → MLflow evaluation records (`records.py`)
     → an MLflow evaluation dataset (re-running merges into the existing one).
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
@@ -65,7 +65,7 @@ call (there is no stub model). To check the harness, smoke-test with
 - `mlflow.parentRunId` tags hold the parent's run **id**, not its name;
   look the parent up by name first (the notebook does this).
 - Dataset expectations become `Expectation` assessments on each trace and
-  MLflow rejects `None` values, so `BenchmarkRecord.to_mlflow_record` omits
+  MLflow rejects `None` values, so `records._mlflow_record` omits
   unresolved markets' `outcome_occurred` instead of emitting `None`.
 - `sqlalchemy<2.1` is pinned: mlflow 3.17's SQL store imports a symbol
   SQLAlchemy 2.1 removed.
@@ -80,8 +80,7 @@ Avoid closures. A callable that needs configuration is a module-level
 function with explicit parameters bound via `functools.partial`, or a small
 `@dataclass` with `__call__`.
 
-Prefer `@dataclass` over `TypedDict`/dicts for structured data
-(`records.BenchmarkRecord`).
+Prefer `@dataclass` over `TypedDict`/dicts for structured data.
 
 In the notebook, one statement per cell: each assignment, function
 definition or expression gets its own cell so intermediates can be inspected

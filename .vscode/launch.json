@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "build_dataset (smoke)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "benchmark.build_dataset",
+            "args": ["--name", "smoke"],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "evaluate (smoke, 2 rows)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "benchmark.evaluate",
+            "args": ["--dataset-name", "smoke", "--max-rows", "2"],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
