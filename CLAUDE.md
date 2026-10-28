@@ -23,7 +23,8 @@ here is one small uv project:
   - `prompt.py` — `SYSTEM_PROMPTS` (the keys are what `--prompt` accepts)
     and the user-prompt builder. `parse_probability.py` pulls the number out
     of the reply. `scorers.py` holds the MLflow scorers.
-  - `config.py` — only `EXPERIMENT_NAME`.
+  - `config.py` — `EXPERIMENT_NAME`, `DATASET_NAME` (the scripts' command-line
+    defaults) and `SNOWFLAKE_CONNECTION`.
 - `brier_score.ipynb` — analysis of finished runs: pulls a parent run's
   children and their traces into `trace_df` and regresses error on months
   past the model's training cutoff.

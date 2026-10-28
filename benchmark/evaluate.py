@@ -37,7 +37,7 @@ import mlflow
 import mlflow.server.jobs.utils  # noqa: E402,F401
 from mlflow.genai.datasets import get_dataset
 
-from benchmark.config import EXPERIMENT_NAME
+from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
 from benchmark.model_cutoffs import TRAINING_DATA_CUTOFF
 from benchmark.predict import MAX_TOKENS, predict
 from benchmark.predict_agent import predict_with_agent
@@ -48,21 +48,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def load_data(dataset_name: str, max_rows: int | None):
-
-    dataset = get_dataset(name=dataset_name)
-    if max_rows is None:
-        return dataset
-    # dataset order is by exchange and ticker, so a head() slice would be all
-    # Kalshi; a fixed-seed sample is representative and the same on every run
-    frame = dataset.to_df()
-    return frame.sample(n=min(max_rows, len(frame)), random_state=0)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
-        "--dataset-name", required=True, help="MLflow evaluation dataset name"
+        "--dataset-name", default=DATASET_NAME, help="MLflow evaluation dataset name"
+    )
+    parser.add_argument(
+        "--experiment-name", default=EXPERIMENT_NAME, help="MLflow experiment name"
     )
     parser.add_argument(
         "--model",
@@ -93,9 +85,13 @@ def main() -> None:
     parser.add_argument("--run-name")
     args = parser.parse_args()
 
-    mlflow.set_experiment(EXPERIMENT_NAME)
+    mlflow.set_experiment(args.experiment_name)
 
-    data = load_data(args.dataset_name, args.max_rows)
+    data = get_dataset(name=args.dataset_name)
+    if args.max_rows is not None:
+        data = data.to_df().sample(
+            n=min(args.max_rows, len(data.to_df())), random_state=0
+        )
     run_name = args.run_name or f"sweep-{datetime.now():%Y%m%d-%H%M}"
     # a parent run per invocation holding the shared settings, with one child
     # run per (model, system prompt) pair, all on the same sample, so models
@@ -122,10 +118,7 @@ def main() -> None:
                 mlflow.genai.evaluate(
                     data=data,
                     predict_fn=predict_fn,
-                    scorers=[
-                        # return_output, abs_error_vs_market,
-                        squared_error
-                    ],
+                    scorers=[squared_error],
                 )
 
 

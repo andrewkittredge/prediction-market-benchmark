@@ -23,6 +23,7 @@ import mlflow
 from mlflow.genai.datasets import create_dataset, get_dataset
 from snowflake.snowpark.session import Session
 
+from benchmark.config import DATASET_NAME, EXPERIMENT_NAME, SNOWFLAKE_CONNECTION
 from benchmark.records import mlflow_records_from_pandas
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -76,14 +77,14 @@ order by exchange, event_ticker, outcome
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--dataset-name", default="prediction-markets")
-    parser.add_argument("--experiment-name", default="prediction-markets-experiment")
+    parser.add_argument("--dataset-name", default=DATASET_NAME)
+    parser.add_argument("--experiment-name", default=EXPERIMENT_NAME)
     args = parser.parse_args()
     dataset_name = args.dataset_name
     experiment_name = args.experiment_name
     # credentials come from ~/.snowflake/connections.toml, not the environment
     with Session.builder.config(
-        "connection_name", "prediction-markets"
+        "connection_name", SNOWFLAKE_CONNECTION
     ).create() as session:
         snowpark_df = session.sql(_QUERY_TEMPLATE)
         local_pandas_df = snowpark_df.to_pandas()
