@@ -57,11 +57,12 @@ def main() -> None:
         "--experiment-name", default=EXPERIMENT_NAME, help="MLflow experiment name"
     )
     parser.add_argument(
-        "--model",
+        "--models",
         nargs="+",
         choices=TRAINING_DATA_CUTOFF,
         metavar="MODEL",
         help="Anthropic model id(s) to sweep; default %(default)s",
+        default=["claude-opus-4-6"],
     )
     parser.add_argument(
         "--prompt",
@@ -104,7 +105,7 @@ def main() -> None:
                 "backend": "agent" if args.agent else "api",
             }
         )
-        for model_name, system_prompt in itertools.product(args.model, args.prompt):
+        for model_name, system_prompt in itertools.product(args.models, args.prompt):
             if args.agent:
                 predict_fn = partial(predict_with_agent, model_name, system_prompt)
             else:

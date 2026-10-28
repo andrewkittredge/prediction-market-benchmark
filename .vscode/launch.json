@@ -19,8 +19,6 @@
             "request": "launch",
             "module": "benchmark.evaluate",
             "args": [
-                "--dataset-name",
-                "markets",
                 "--max-rows",
                 "2"
             ],
