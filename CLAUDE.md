@@ -12,8 +12,9 @@ here is one small uv project:
 
 - `benchmark/` — the code, imported as `benchmark.*` from the project root
   (`[tool.uv] package = false`; nothing is installed as a package).
-  - `build_dataset.py` — Snowpark query → pandas → MLflow evaluation records (`records.py`)
-    → an MLflow evaluation dataset (re-running merges into the existing one).
+  - `build_dataset.py` — `snowflake_markets.fetch_markets()` (the Snowpark
+    query, as a pandas frame) → MLflow evaluation records (`records.py`) → an
+    MLflow evaluation dataset (re-running merges into the existing one).
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
     fixed-seed sample. `TRAINING_DATA_CUTOFF` there is hand-maintained.
