@@ -16,8 +16,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from benchmark.parse_probability import parse_probability
-from benchmark.prompt import SYSTEM_PROMPTS, build_forecast_prompt
+from benchmark.prompt import SYSTEM_PROMPTS, Forecast, build_forecast_prompt
 
 MAX_TOKENS = 1024
 
@@ -39,22 +38,29 @@ client = anthropic.Anthropic()
     wait=wait_exponential(min=2, max=60),
     reraise=True,
 )
-def ask(model: str, max_tokens: int, system_prompt: str, prompt: str) -> str:
-    message = client.messages.create(
+def ask(
+    model: str, max_tokens: int, system_prompt: str, prompt: str
+) -> anthropic.types.ParsedMessage[Forecast]:
+    """Structured output: the API constrains the reply to the Forecast schema."""
+    return client.messages.parse(
         model=model,
         max_tokens=max_tokens,
         system=SYSTEM_PROMPTS[system_prompt],
         messages=[{"role": "user", "content": prompt}],
+        output_format=Forecast,
     )
-    return "".join(block.text for block in message.content if block.type == "text")
 
 
 @mlflow.trace(name="forecast")
-def predict(
+def predict_api(
     model: str, max_tokens: int, system_prompt: str, **inputs: Any
 ) -> dict[str, Any]:
     prompt = build_forecast_prompt(inputs)
-    raw = ask(model, max_tokens, system_prompt, prompt)
-    probability = parse_probability(raw)
-
-    return {"probability": probability, "raw": raw, "model": model}
+    message = ask(model, max_tokens, system_prompt, prompt)
+    forecast = message.parsed_output
+    raw = "".join(block.text for block in message.content if block.type == "text")
+    return {
+        "probability": None if forecast is None else forecast.probability,
+        "raw": raw,
+        "model": model,
+    }
