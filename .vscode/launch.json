@@ -2,6 +2,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "evaluate (agents)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "benchmark.evaluate",
+            "args": [
+                "--agent",
+                "--model",
+                "claude-sonnet-5-5"
+            ],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "build_dataset (markets)",
             "type": "debugpy",
             "request": "launch",

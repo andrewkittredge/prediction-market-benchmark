@@ -74,7 +74,10 @@ def main() -> None:
         "default all (%(default)s)",
     )
     parser.add_argument(
-        "--max-rows", type=int, default=100, help="Limit the number of rows to evaluate"
+        "--max-rows",
+        type=int,
+        default=None,
+        help="Limit the number of rows to evaluate",
     )
     parser.add_argument(
         "--agent",

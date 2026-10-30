@@ -2,7 +2,8 @@
 A predict_fn that forecasts with a local Claude Code agent (claude-agent-sdk)
 instead of a bare Messages API call.
 
-The SDK runs the installed `claude` CLI as a subprocess, so it uses whatever
+The SDK runs the `claude` CLI bundled inside the claude-agent-sdk package as
+a subprocess (not the globally installed one), so it uses whatever
 that CLI is logged in as — with ANTHROPIC_API_KEY unset, your Claude
 subscription rather than the API. The agent gets WebSearch and WebFetch, so
 unlike predict.py it can look things up before answering; everything else
