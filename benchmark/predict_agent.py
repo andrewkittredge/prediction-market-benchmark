@@ -5,10 +5,10 @@ instead of a bare Messages API call.
 The SDK runs the `claude` CLI bundled inside the claude-agent-sdk package as
 a subprocess (not the globally installed one), so it uses whatever
 that CLI is logged in as — with ANTHROPIC_API_KEY unset, your Claude
-subscription rather than the API. The agent gets WebSearch and WebFetch, so
-unlike predict.py it can look things up before answering; everything else
-(project CLAUDE.md, settings, other tools) is switched off so the forecast
-depends only on the prompt.
+subscription rather than the API. The agent gets no tools (no web search:
+looking up what happened after as_of would leak the answer), and project
+CLAUDE.md and settings are switched off, so the forecast depends only on the
+prompt and the model's own knowledge.
 
 `model` and `system_prompt` are bound with functools.partial in evaluate.py;
 the remaining keyword arguments are the record's inputs.
@@ -23,8 +23,7 @@ from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 from benchmark.parse_probability import parse_probability
 from benchmark.prompt import SYSTEM_PROMPTS, build_forecast_prompt
 
-TOOLS = ["WebSearch", "WebFetch"]
-MAX_TURNS = 10
+TOOLS: list[str] = []
 
 
 async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessage:
@@ -33,9 +32,7 @@ async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessag
         system_prompt=SYSTEM_PROMPTS[system_prompt],
         tools=TOOLS,
         allowed_tools=TOOLS,
-        permission_mode="bypassPermissions",
         setting_sources=[],
-        max_turns=MAX_TURNS,
     )
     # the ResultMessage is the last message; drain the iterator rather than
     # returning from inside it, which closes the SDK's generator mid-run

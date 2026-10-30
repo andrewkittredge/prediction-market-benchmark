@@ -15,7 +15,7 @@ Each invocation is one parent MLflow run with a nested child run per
 (default: all of benchmark.prompt.SYSTEM_PROMPTS) — all over the same sample
 of rows.
 
-Results land in the MLflow experiment "prediction-market-forecasting" at the
+Results land in the MLflow experiment config.EXPERIMENT_NAME at the
 tracking URI; browse them with
     uv run mlflow-ui
 """
@@ -82,7 +82,7 @@ def main() -> None:
     parser.add_argument(
         "--agent",
         action="store_true",
-        help="forecast with a local Claude Code agent (web search enabled) "
+        help="forecast with a local Claude Code agent (no tools) "
         "instead of a single Messages API call",
     )
 
