@@ -25,7 +25,7 @@ def abs_error_vs_market(outputs: Any, expectations: dict) -> float | None:
     return abs(p - expectations["market_probability"])
 
 
-@scorer(aggregations=["mean"], name="brier_score")
+@scorer(aggregations=["mean"], name="squared_error")
 def squared_error(outputs: dict, expectations: dict) -> float | None:
     """
     (p - market_probability)^2, the squared error against the market's first
