@@ -23,7 +23,7 @@ tracking URI; browse them with
 import argparse
 import itertools
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from functools import partial
 
 import mlflow
@@ -35,17 +35,25 @@ import mlflow
 # other's import locks forever. Importing it once here, single-threaded,
 # before evaluate() starts its thread pools avoids the race.
 import mlflow.server.jobs.utils  # noqa: E402,F401
+import pandas as pd
 from mlflow.genai.datasets import get_dataset
 
 from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
 from benchmark.model_cutoffs import TRAINING_DATA_CUTOFF
-from benchmark.predict import MAX_TOKENS, predict
 from benchmark.predict_agent import predict_with_agent
+
+# from benchmark.predict_api import MAX_TOKENS, predict_api
 from benchmark.prompt import SYSTEM_PROMPTS
 from benchmark.scorers import squared_error
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def after_cutoff(data: pd.DataFrame, cutoff: date) -> pd.Series:
+    """Mask of rows whose inputs.as_of falls after `cutoff` (exclusive)."""
+    as_of = pd.to_datetime(data["inputs"].map(lambda inputs: inputs["as_of"]))
+    return as_of > pd.Timestamp(cutoff)
 
 
 def main() -> None:
@@ -80,6 +88,12 @@ def main() -> None:
         help="Limit the number of rows to evaluate",
     )
     parser.add_argument(
+        "--cutoff",
+        type=date.fromisoformat,
+        metavar="YYYY-MM-DD",
+        help="only evaluate rows whose as_of is after this date",
+    )
+    parser.add_argument(
         "--agent",
         action="store_true",
         help="forecast with a local Claude Code agent (no tools) "
@@ -91,11 +105,11 @@ def main() -> None:
 
     mlflow.set_experiment(args.experiment_name)
 
-    data = get_dataset(name=args.dataset_name)
+    data = get_dataset(name=args.dataset_name).to_df()
+    if args.cutoff is not None:
+        data = data[after_cutoff(data, args.cutoff)]
     if args.max_rows is not None:
-        data = data.to_df().sample(
-            n=min(args.max_rows, len(data.to_df())), random_state=0
-        )
+        data = data.sample(n=min(args.max_rows, len(data)), random_state=0)
     run_name = args.run_name or f"sweep-{datetime.now():%Y%m%d-%H%M}"
     # a parent run per invocation holding the shared settings, with one child
     # run per (model, system prompt) pair, all on the same sample, so models
@@ -105,6 +119,7 @@ def main() -> None:
             {
                 "dataset": args.dataset_name,
                 "max_rows": args.max_rows or "all",
+                "cutoff": args.cutoff or "none",
                 "backend": "agent" if args.agent else "api",
             }
         )
@@ -112,7 +127,8 @@ def main() -> None:
             if args.agent:
                 predict_fn = partial(predict_with_agent, model_name, system_prompt)
             else:
-                predict_fn = partial(predict, model_name, MAX_TOKENS, system_prompt)
+                pass
+                # predict_fn = partial(predict_api, model_name, MAX_TOKENS, system_prompt)
             with mlflow.start_run(
                 run_name=f"{model_name}-{system_prompt}", nested=True
             ):

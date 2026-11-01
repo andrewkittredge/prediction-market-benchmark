@@ -16,7 +16,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from benchmark.prompt import SYSTEM_PROMPTS, Forecast, build_forecast_prompt
+from benchmark.prompt import SYSTEM_PROMPTS, build_forecast_prompt
 
 MAX_TOKENS = 1024
 
