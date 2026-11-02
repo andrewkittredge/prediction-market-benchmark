@@ -19,7 +19,8 @@ from benchmark.config import SNOWFLAKE_CONNECTION
 # markets get NULL and are skipped by the Brier scorer.
 _QUERY_TEMPLATE = r"""
 with first_price as (
-    select
+    select       
+        std_event_type,
         market as exchange,
         event_ticker,
         event_category,

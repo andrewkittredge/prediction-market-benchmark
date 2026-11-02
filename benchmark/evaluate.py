@@ -106,10 +106,10 @@ def main() -> None:
     mlflow.set_experiment(args.experiment_name)
 
     data = get_dataset(name=args.dataset_name).to_df()
-    if args.cutoff is not None:
-        data = data[after_cutoff(data, args.cutoff)]
-    if args.max_rows is not None:
-        data = data.sample(n=min(args.max_rows, len(data)), random_state=0)
+    if cutoff := args.cutoff:
+        data = data[after_cutoff(data, cutoff)]
+    if max_rows := args.max_rows:
+        data = data.sample(n=min(max_rows, len(data)), random_state=0)
     run_name = args.run_name or f"sweep-{datetime.now():%Y%m%d-%H%M}"
     # a parent run per invocation holding the shared settings, with one child
     # run per (model, system prompt) pair, all on the same sample, so models
@@ -118,8 +118,8 @@ def main() -> None:
         mlflow.log_params(
             {
                 "dataset": args.dataset_name,
-                "max_rows": args.max_rows or "all",
-                "cutoff": args.cutoff or "none",
+                "max_rows": max_rows or "all",
+                "cutoff": cutoff,
                 "backend": "agent" if args.agent else "api",
             }
         )

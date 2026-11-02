@@ -20,7 +20,7 @@ _INPUT_COLUMNS = (
     "outcome",
     "as_of",
 )
-_TAG_COLUMNS = ("record_id", "event_category")
+_TAG_COLUMNS = ("record_id", "exchange", "event_category", "std_event_type")
 
 
 def mlflow_records_from_pandas(df: pd.DataFrame) -> list[dict[str, dict[str, Any]]]:
@@ -43,6 +43,7 @@ def _mlflow_record(row: dict[str, Any]) -> dict[str, dict[str, Any]]:
         "record_id": str(row["record_id"]),
         "event_ticker": _none_if_blank(row["event_ticker"]),
         "event_category": _none_if_blank(row["event_category"]),
+        "std_event_type": _none_if_blank(row["std_event_type"]),
         "market_description": row["market_description"] or "",
         "market_close": _isoformat(row["market_close"]),
         "as_of": _isoformat(row["as_of"]),

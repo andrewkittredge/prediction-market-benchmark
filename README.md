@@ -19,9 +19,10 @@ price**.
 - `expectations` — `market_probability`, the price at `as_of`, and
   `outcome_occurred`, 1/0 once the market has resolved (its `RESOLUTION` label
   matches the outcome) and null while it hasn't.
-- `tags` — `record_id` (= `HASH(exchange, event_ticker, outcome)`) and
-  `event_category`; tags are copied onto each evaluation trace, so traces can
-  be filtered by category in the UI.
+- `tags` — `record_id` (= `HASH(exchange, event_ticker, outcome)`),
+  `exchange`, `event_category` and `std_event_type`; tags are copied onto each
+  evaluation trace, so traces can be filtered by exchange, category or event
+  type in the UI.
 
 The query takes every qualifying market (about 11.9k as of October 2026: 658
 Kalshi, 11.3k Polymarket); `--exchange` narrows it to one exchange.
