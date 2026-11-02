@@ -59,7 +59,7 @@ uv run python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude
 uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10 --model claude-sonnet-5-5 --agent
 
 # browse datasets, evaluation runs and traces at http://localhost:5000
-uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
+uv run mlflow server --port 5000 --backend-store-uri "$env:MLFLOW_TRACKING_URI"
 ```
 
 MLflow evaluation datasets need a SQL tracking store (the file store doesn't
