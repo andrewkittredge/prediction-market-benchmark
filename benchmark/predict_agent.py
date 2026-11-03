@@ -20,7 +20,7 @@ from typing import Any
 import mlflow
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
-from benchmark.parse_probability import parse_probability
+from benchmark.parse_probability import parse_forecast
 from benchmark.prompt import SYSTEM_PROMPTS, build_forecast_prompt
 
 TOOLS: list[str] = []
@@ -54,8 +54,10 @@ def predict_with_agent(model: str, system_prompt: str, **inputs: Any) -> dict[st
     raw = result.result or ""
     if result.is_error:
         raise RuntimeError(f"agent run failed ({result.subtype}): {result.errors}")
+    forecast = parse_forecast(raw)
     return {
-        "probability": parse_probability(raw),
+        "probability": forecast.probability,
+        "confidence": forecast.confidence,
         "raw": raw,
         "model": model,
         "num_turns": result.num_turns,
