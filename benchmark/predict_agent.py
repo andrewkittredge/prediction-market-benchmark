@@ -1,6 +1,6 @@
 """
-A predict_fn that forecasts with a local Claude Code agent (claude-agent-sdk)
-instead of a bare Messages API call.
+The predict_fn for mlflow.genai.evaluate: forecasts with a local Claude Code
+agent (claude-agent-sdk).
 
 The SDK runs the `claude` CLI bundled inside the claude-agent-sdk package as
 a subprocess (not the globally installed one), so it uses whatever

@@ -2,13 +2,11 @@
 Runs an LLM against the forecasting benchmark with mlflow.genai.evaluate.
 
     cd prediction-market-benchmark
-    set ANTHROPIC_API_KEY=...
     uv run evaluate --dataset-name smoke --max-rows 10
     uv run evaluate --dataset-name forecasting-v2 --model claude-opus-5-5 claude-haiku-4-5
 
-    # forecast with a local Claude Code agent (claude-agent-sdk) instead of
-    # the Messages API; see predict_agent.py
-    uv run evaluate --dataset-name smoke --max-rows 10 --agent
+Forecasts come from a local Claude Code agent (claude-agent-sdk); see
+predict_agent.py for what it is logged in as.
 
 Each invocation is one parent MLflow run with a nested child run per
 (model, system prompt) pair — every --model crossed with every --prompt
@@ -41,8 +39,6 @@ from mlflow.genai.datasets import get_dataset
 from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
 from benchmark.model_cutoffs import TRAINING_DATA_CUTOFF
 from benchmark.predict_agent import predict_with_agent
-
-# from benchmark.predict_api import MAX_TOKENS, predict_api
 from benchmark.prompt import SYSTEM_PROMPTS
 from benchmark.scorers import squared_error
 
@@ -93,13 +89,6 @@ def main() -> None:
         metavar="YYYY-MM-DD",
         help="only evaluate rows whose as_of is after this date",
     )
-    parser.add_argument(
-        "--agent",
-        action="store_true",
-        help="forecast with a local Claude Code agent (no tools) "
-        "instead of a single Messages API call",
-    )
-
     parser.add_argument("--run-name")
     args = parser.parse_args()
 
@@ -115,25 +104,12 @@ def main() -> None:
     # run per (model, system prompt) pair, all on the same sample, so models
     # and prompts can be compared trace-for-trace
     with mlflow.start_run(run_name=run_name):
-        mlflow.log_params(
-            {
-                "dataset": args.dataset_name,
-                "max_rows": max_rows or "all",
-                "cutoff": cutoff,
-                "backend": "agent" if args.agent else "api",
-            }
-        )
         for model_name, system_prompt in itertools.product(args.models, args.prompt):
-            if args.agent:
-                predict_fn = partial(predict_with_agent, model_name, system_prompt)
-            else:
-                pass
-                # predict_fn = partial(predict_api, model_name, MAX_TOKENS, system_prompt)
+            predict_fn = partial(predict_with_agent, model_name, system_prompt)
             with mlflow.start_run(
                 run_name=f"{model_name}-{system_prompt}", nested=True
             ):
                 mlflow.set_active_model(name=model_name)
-                mlflow.set_tag("training_data_cutoff", TRAINING_DATA_CUTOFF[model_name])
                 mlflow.log_params({"system_prompt": system_prompt})
                 mlflow.genai.evaluate(
                     data=data,

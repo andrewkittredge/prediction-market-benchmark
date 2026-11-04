@@ -20,9 +20,9 @@ here is one small uv project:
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
     fixed-seed sample. `TRAINING_DATA_CUTOFF` there is hand-maintained.
-  - `predict.py` / `predict_agent.py` — the two `predict_fn`s (Messages API
-    call, or a local Claude Code agent via `claude-agent-sdk` with web
-    search). Model and prompt are bound with `functools.partial`.
+  - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
+    `claude-agent-sdk`, no tools. Model and prompt are bound with
+    `functools.partial`.
   - `prompt.py` — `SYSTEM_PROMPTS` (the keys are what `--prompt` accepts)
     and the user-prompt builder. `parse_probability.py` pulls the number out
     of the reply. `scorers.py` holds the MLflow scorers.
@@ -40,8 +40,9 @@ Snowflake engine and models; that repo's `CLAUDE.md` documents the data.
 
 ## Commands
 
-Run from this folder. `ANTHROPIC_API_KEY` comes from the gitignored `.env`
-here, a copy of the one at the sibling repo's root. Snowflake credentials come
+Run from this folder. The agent runs on the Claude CLI's own login unless
+`ANTHROPIC_API_KEY` is set (the gitignored `.env` here, a copy of the one at
+the sibling repo's root, passed with `--env-file .env`). Snowflake credentials come
 from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 (`config.SNOWFLAKE_CONNECTION`), not from the environment.
 

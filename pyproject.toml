@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "LLM forecasting benchmark against prediction-market prices"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=0.125.0",
     "claude-agent-sdk>=0.2.174",
     "ipykernel>=7.3.0",
     "ipympl>=0.10.0",
@@ -17,7 +16,6 @@ dependencies = [
     "snowflake-snowpark-python>=1.30",
     "sqlalchemy<2.1",
     "statsmodels>=0.15.0",
-    "tenacity>=9.1.4",
 ]
 
 [project.scripts]

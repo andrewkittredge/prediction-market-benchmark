@@ -2477,7 +2477,6 @@ name = "prediction-market-benchmark"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "anthropic" },
     { name = "claude-agent-sdk" },
     { name = "ipykernel" },
     { name = "ipympl" },
@@ -2489,12 +2488,10 @@ dependencies = [
     { name = "snowflake-snowpark-python" },
     { name = "sqlalchemy" },
     { name = "statsmodels" },
-    { name = "tenacity" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.125.0" },
     { name = "claude-agent-sdk", specifier = ">=0.2.174" },
     { name = "ipykernel", specifier = ">=7.3.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
@@ -2506,7 +2503,6 @@ requires-dist = [
     { name = "snowflake-snowpark-python", specifier = ">=1.30" },
     { name = "sqlalchemy", specifier = "<2.1" },
     { name = "statsmodels", specifier = ">=0.15.0" },
-    { name = "tenacity", specifier = ">=9.1.4" },
 ]
 
 [[package]]
