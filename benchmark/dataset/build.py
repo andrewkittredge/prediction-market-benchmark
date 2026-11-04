@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--dataset-name", default=DATASruET_NAME)
+    parser.add_argument("--dataset-name", default=DATASET_NAME)
     args = parser.parse_args()
     dataset_name = args.dataset_name
 

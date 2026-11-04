@@ -19,7 +19,7 @@ here is one small uv project:
     dataset (re-running merges into the existing one).
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
-    fixed-seed sample. `TRAINING_DATA_CUTOFF` there is hand-maintained.
+    fixed-seed sample.
   - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
     `claude-agent-sdk`, no tools. Model and prompt are bound with
     `functools.partial`.
@@ -34,9 +34,8 @@ here is one small uv project:
   sweep with it into `trace_df` and regresses error on months past the
   model's training cutoff.
 
-It depends on the `prediction-markets` library from the sibling checkout
-`../prediction-markets` (editable path dependency in `pyproject.toml`) for the
-Snowflake engine and models; that repo's `CLAUDE.md` documents the data.
+The `STANDARDIZED_MARKETS` view it queries is built by the sibling repo
+`../prediction-markets`, whose `CLAUDE.md` documents the data.
 
 ## Commands
 

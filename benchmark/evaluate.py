@@ -37,7 +37,6 @@ import pandas as pd
 from mlflow.genai.datasets import get_dataset
 
 from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
-from benchmark.model_cutoffs import TRAINING_DATA_CUTOFF
 from benchmark.predict_agent import predict_with_agent
 from benchmark.prompt import SYSTEM_PROMPTS
 from benchmark.scorers import squared_error
@@ -63,7 +62,6 @@ def main() -> None:
     parser.add_argument(
         "--models",
         nargs="+",
-        choices=TRAINING_DATA_CUTOFF,
         metavar="MODEL",
         help="Anthropic model id(s) to sweep; default %(default)s",
         default=["claude-opus-4-6"],
