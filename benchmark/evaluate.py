@@ -3,12 +3,12 @@ Runs an LLM against the forecasting benchmark with mlflow.genai.evaluate.
 
     cd prediction-market-benchmark
     set ANTHROPIC_API_KEY=...
-    uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10
-    uv run python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-opus-5-5 claude-haiku-4-5
+    uv run evaluate --dataset-name smoke --max-rows 10
+    uv run evaluate --dataset-name forecasting-v2 --model claude-opus-5-5 claude-haiku-4-5
 
     # forecast with a local Claude Code agent (claude-agent-sdk) instead of
     # the Messages API; see predict_agent.py
-    uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10 --agent
+    uv run evaluate --dataset-name smoke --max-rows 10 --agent
 
 Each invocation is one parent MLflow run with a nested child run per
 (model, system prompt) pair — every --model crossed with every --prompt

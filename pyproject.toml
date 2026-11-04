@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 build-dataset = "benchmark.dataset.build:main"
+evaluate = "benchmark.evaluate:main"
 
 # Installed editable into .venv (so the script above exists); only the
 # `benchmark/` package is built.

@@ -12,7 +12,7 @@ here is one small uv project:
 
 - `benchmark/` — the code, installed editable into `.venv` by `uv sync`
   (hatchling builds just this package) so `pyproject.toml` can declare
-  console scripts such as `build-dataset`.
+  console scripts (`build-dataset`, `evaluate`).
   - `dataset/` — building the evaluation dataset: `build.py` runs
     `snowflake_markets.fetch_markets()` (the Snowpark query, as a pandas
     frame) → MLflow evaluation records (`records.py`) → an MLflow evaluation
@@ -48,8 +48,8 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 ```bash
 uv sync
 uv run --env-file .env build-dataset --dataset-name smoke
-uv run --env-file .env python -m benchmark.evaluate --dataset-name smoke --max-rows 2
-uv run --env-file .env python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-haiku-4-5 --prompt no-cutoff
+uv run --env-file .env evaluate --dataset-name smoke --max-rows 2
+uv run --env-file .env evaluate --dataset-name forecasting-v2 --model claude-haiku-4-5 --prompt no-cutoff
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 ```
 
