@@ -33,12 +33,11 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--dataset-name", default=DATASET_NAME)
-    parser.add_argument("--experiment-name", default=EXPERIMENT_NAME)
     args = parser.parse_args()
     dataset_name = args.dataset_name
-    experiment_name = args.experiment_name
+
     records = mlflow_records_from_pandas(fetch_markets())
-    mlflow.set_experiment(experiment_name=experiment_name)
+
     try:
         dataset = get_dataset(name=dataset_name)
     except mlflow.MlflowException:
