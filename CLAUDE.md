@@ -10,8 +10,9 @@ price (and, once a market resolves, the outcome). `README.md` explains the
 dataset shape, the scorers and the leakage caveat; read it first. Everything
 here is one small uv project:
 
-- `benchmark/` — the code, imported as `benchmark.*` from the project root
-  (`[tool.uv] package = false`; nothing is installed as a package).
+- `benchmark/` — the code, installed editable into `.venv` by `uv sync`
+  (hatchling builds just this package) so `pyproject.toml` can declare
+  console scripts such as `build-dataset`.
   - `dataset/` — building the evaluation dataset: `build.py` runs
     `snowflake_markets.fetch_markets()` (the Snowpark query, as a pandas
     frame) → MLflow evaluation records (`records.py`) → an MLflow evaluation
@@ -46,7 +47,7 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 
 ```bash
 uv sync
-uv run --env-file .env python -m benchmark.dataset.build --dataset-name smoke
+uv run --env-file .env build-dataset --dataset-name smoke
 uv run --env-file .env python -m benchmark.evaluate --dataset-name smoke --max-rows 2
 uv run --env-file .env python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-haiku-4-5 --prompt no-cutoff
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
@@ -55,7 +56,7 @@ uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 **Don't launch real evaluation runs unprompted.** Every row is a paid API
 call (there is no stub model). To check the harness, smoke-test with
 `--max-rows 2` on the `smoke` dataset and hand the full command to the user.
-`dataset.build` hits Snowflake and takes a while; leave it to the user too.
+`build-dataset` hits Snowflake and takes a while; leave it to the user too.
 
 ## MLflow
 

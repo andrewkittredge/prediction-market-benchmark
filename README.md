@@ -29,8 +29,8 @@ Kalshi, 11.3k Polymarket).
 
 ## Commands
 
-Run from this folder (its own uv project; `benchmark/` is a plain package
-imported from the project root). It depends on the `prediction-markets`
+Run from this folder (its own uv project; `uv sync` installs `benchmark/`
+editable, which provides the `build-dataset` script). It depends on the `prediction-markets`
 library from the sibling checkout `../prediction-markets`. Snowflake and
 Anthropic credentials come from a gitignored `.env` here, the same file as the
 one at that repo's root; pass it with `uv run --env-file .env ...`.
@@ -39,8 +39,8 @@ one at that repo's root; pass it with `uv run --env-file .env ...`.
 uv sync
 
 # build: registers an MLflow evaluation dataset (re-running merges into it)
-uv run python -m benchmark.dataset.build --dataset-name smoke
-uv run python -m benchmark.dataset.build --dataset-name forecasting-v2
+uv run build-dataset --dataset-name smoke
+uv run build-dataset --dataset-name forecasting-v2
 
 # evaluate models (needs ANTHROPIC_API_KEY) on a fixed random sample; --max-rows defaults to 100.
 # One parent MLflow run with a nested child run per (model, system prompt)

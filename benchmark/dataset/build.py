@@ -7,10 +7,8 @@ frozen at its first observed price: the model is asked for P(outcome) as of
 that moment and scored against the market's own price and, where the market
 has since resolved, against whether the outcome occurred.
 
-    # from the project root (`benchmark` is not installed, so `-m` needs the
-    # root on sys.path)
-    uv run python -m benchmark.dataset.build
-    uv run python -m benchmark.dataset.build --dataset-name smoke
+    uv run build-dataset
+    uv run build-dataset --dataset-name smoke
 
 Registers (or merges into) an MLflow evaluation dataset of the given name.
 MLflow evaluation datasets need a SQL tracking store, hence the sqlite default.
@@ -32,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--dataset-name", default=DATASET_NAME)
+    parser.add_argument("--dataset-name", default=DATASruET_NAME)
     args = parser.parse_args()
     dataset_name = args.dataset_name
 
