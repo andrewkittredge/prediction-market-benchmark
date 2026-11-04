@@ -46,8 +46,10 @@ uv run python -m benchmark.build_dataset --name forecasting-v2
 # One parent MLflow run with a nested child run per (model, system prompt)
 # pair: every --model crossed with every --prompt (default: all the prompts in
 # prompt.py, i.e. with and without the "use only information available on this
-# date" instruction), same rows each. --model must be in evaluate.py's
-# TRAINING_DATA_CUTOFF table.
+# date" instruction), same rows each. --model must be in model_cutoffs.py's
+# TRAINING_DATA_CUTOFF table. Each reply is a JSON object with the model's
+# "probability" (its estimate of the opening price) and its "confidence" (see
+# Scorers below).
 uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10
 uv run python -m benchmark.evaluate --dataset-name smoke --max-rows 10 --prompt cutoff
 uv run python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-opus-5-5 claude-haiku-4-5
@@ -73,12 +75,31 @@ or machine rebuilds the dataset from Snowflake.
 
 ## Scorers
 
-- `abs_error_vs_market` = |p − market_probability|: agreement with the market.
-- `brier_score` = (p − market_probability)²: the same disagreement, squared, so
-  large misses weigh more.
+The run's MLflow scorer is `squared_error` = (p − market_probability)²: the
+model's disagreement with the market's opening price, squared so large misses
+weigh more. It is averaged over the dataset and skipped (None) when no
+probability could be parsed from the reply. Lower is better. `scorers.py` also
+has `abs_error_vs_market` = |p − market_probability|, which the notebook
+computes as `error`.
 
-Both are averaged over the dataset and skipped (None) when no probability could
-be parsed from the reply. Lower is better for both.
+### Confidence
+
+Besides its price estimate the model states a **confidence**: its own
+probability that the estimate lands within `CONFIDENCE_TOLERANCE` (0.10, set
+in `prompt.py`) of the actual opening price. `parse_probability.parse_forecast`
+reads both numbers from the reply's JSON object, and the predict functions
+return `confidence` next to `probability`.
+
+The confidence is scored in `analysis/brier_score.ipynb`, not by an MLflow scorer:
+
+- `within_tolerance` = |p − market_probability| ≤ `CONFIDENCE_TOLERANCE`: the
+  event the model was asked to rate.
+- `confidence_brier` = (confidence − within_tolerance)²: the Brier score of
+  the stated confidence against that event. 0.25 is what a constant 0.5 would
+  score; lower is better.
+- A calibration curve per model: hit rate (`within_tolerance` mean) per
+  confidence decile, plotted against the mean stated confidence in that
+  decile, with the diagonal as perfect calibration.
 
 ## Caveat: leakage
 

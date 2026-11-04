@@ -1,0 +1,4 @@
+{
+  // notebooks under analysis/ import benchmark.* and analysis.* from the project root
+  "jupyter.notebookFileRoot": "${workspaceFolder}"
+}

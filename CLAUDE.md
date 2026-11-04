@@ -26,9 +26,11 @@ here is one small uv project:
     of the reply. `scorers.py` holds the MLflow scorers.
   - `config.py` — `EXPERIMENT_NAME`, `DATASET_NAME` (the scripts' command-line
     defaults) and `SNOWFLAKE_CONNECTION`.
-- `brier_score.ipynb` — analysis of finished runs: pulls a parent run's
-  children and their traces into `trace_df` and regresses error on months
-  past the model's training cutoff.
+- `analysis/` — notebooks and their helpers. `run_traces.py` pulls a
+  finished sweep back out of MLflow (the parent's child runs, their traces,
+  and `load_trace_df`, one row per forecast); `brier_score.ipynb` loads a
+  sweep with it into `trace_df` and regresses error on months past the
+  model's training cutoff.
 
 It depends on the `prediction-markets` library from the sibling checkout
 `../prediction-markets` (editable path dependency in `pyproject.toml`) for the
@@ -86,7 +88,9 @@ function with explicit parameters bound via `functools.partial`, or a small
 
 Prefer `@dataclass` over `TypedDict`/dicts for structured data.
 
-In the notebook, one statement per cell: each assignment, function
+In the notebooks (`analysis/`), one statement per cell: each assignment, function
 definition or expression gets its own cell so intermediates can be inspected
-and re-run alone. The notebook's kernel is this project's `.venv`; its cwd is
-the project root, so `benchmark.*` imports work there.
+and re-run alone. The notebooks' kernel is this project's `.venv`; their cwd
+is the project root (`jupyter.notebookFileRoot` in `.vscode/settings.json`),
+so `benchmark.*` and `analysis.*` import from there. Restart the kernel after
+changing that setting.
