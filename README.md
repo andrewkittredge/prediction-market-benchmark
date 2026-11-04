@@ -25,7 +25,7 @@ price**.
   type in the UI.
 
 The query takes every qualifying market (about 11.9k as of October 2026: 658
-Kalshi, 11.3k Polymarket); `--exchange` narrows it to one exchange.
+Kalshi, 11.3k Polymarket).
 
 ## Commands
 
@@ -39,8 +39,8 @@ one at that repo's root; pass it with `uv run --env-file .env ...`.
 uv sync
 
 # build: registers an MLflow evaluation dataset (re-running merges into it)
-uv run python -m benchmark.build_dataset --name smoke --exchange kalshi
-uv run python -m benchmark.build_dataset --name forecasting-v2
+uv run python -m benchmark.dataset.build --dataset-name smoke
+uv run python -m benchmark.dataset.build --dataset-name forecasting-v2
 
 # evaluate models (needs ANTHROPIC_API_KEY) on a fixed random sample; --max-rows defaults to 100.
 # One parent MLflow run with a nested child run per (model, system prompt)

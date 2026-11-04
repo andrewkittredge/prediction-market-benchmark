@@ -12,9 +12,10 @@ here is one small uv project:
 
 - `benchmark/` — the code, imported as `benchmark.*` from the project root
   (`[tool.uv] package = false`; nothing is installed as a package).
-  - `build_dataset.py` — `snowflake_markets.fetch_markets()` (the Snowpark
-    query, as a pandas frame) → MLflow evaluation records (`records.py`) → an
-    MLflow evaluation dataset (re-running merges into the existing one).
+  - `dataset/` — building the evaluation dataset: `build.py` runs
+    `snowflake_markets.fetch_markets()` (the Snowpark query, as a pandas
+    frame) → MLflow evaluation records (`records.py`) → an MLflow evaluation
+    dataset (re-running merges into the existing one).
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
     fixed-seed sample. `TRAINING_DATA_CUTOFF` there is hand-maintained.
@@ -45,7 +46,7 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 
 ```bash
 uv sync
-uv run --env-file .env python -m benchmark.build_dataset --name smoke --exchange kalshi
+uv run --env-file .env python -m benchmark.dataset.build --dataset-name smoke
 uv run --env-file .env python -m benchmark.evaluate --dataset-name smoke --max-rows 2
 uv run --env-file .env python -m benchmark.evaluate --dataset-name forecasting-v2 --model claude-haiku-4-5 --prompt no-cutoff
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
@@ -54,7 +55,7 @@ uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 **Don't launch real evaluation runs unprompted.** Every row is a paid API
 call (there is no stub model). To check the harness, smoke-test with
 `--max-rows 2` on the `smoke` dataset and hand the full command to the user.
-`build_dataset` hits Snowflake and takes a while; leave it to the user too.
+`dataset.build` hits Snowflake and takes a while; leave it to the user too.
 
 ## MLflow
 
@@ -71,7 +72,7 @@ call (there is no stub model). To check the harness, smoke-test with
 - `mlflow.parentRunId` tags hold the parent's run **id**, not its name;
   look the parent up by name first (the notebook does this).
 - Dataset expectations become `Expectation` assessments on each trace and
-  MLflow rejects `None` values, so `records._mlflow_record` omits
+  MLflow rejects `None` values, so `dataset.records._mlflow_record` omits
   unresolved markets' `outcome_occurred` instead of emitting `None`.
 - `sqlalchemy<2.1` is pinned: mlflow 3.17's SQL store imports a symbol
   SQLAlchemy 2.1 removed.

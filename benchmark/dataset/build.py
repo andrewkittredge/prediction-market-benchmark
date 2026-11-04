@@ -9,8 +9,8 @@ has since resolved, against whether the outcome occurred.
 
     # from the project root (`benchmark` is not installed, so `-m` needs the
     # root on sys.path)
-    uv run python -m benchmark.build_dataset
-    uv run python -m benchmark.build_dataset --dataset-name smoke
+    uv run python -m benchmark.dataset.build
+    uv run python -m benchmark.dataset.build --dataset-name smoke
 
 Registers (or merges into) an MLflow evaluation dataset of the given name.
 MLflow evaluation datasets need a SQL tracking store, hence the sqlite default.
@@ -22,9 +22,9 @@ import logging
 import mlflow
 from mlflow.genai.datasets import create_dataset, get_dataset
 
-from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
-from benchmark.records import mlflow_records_from_pandas
-from benchmark.snowflake_markets import fetch_markets
+from benchmark.config import DATASET_NAME
+from benchmark.dataset.records import mlflow_records_from_pandas
+from benchmark.dataset.snowflake_markets import fetch_markets
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

@@ -18,10 +18,10 @@
             "justMyCode": true
         },
         {
-            "name": "build_dataset (markets)",
+            "name": "dataset.build (markets)",
             "type": "debugpy",
             "request": "launch",
-            "module": "benchmark.build_dataset",
+            "module": "benchmark.dataset.build",
             "args": [],
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",

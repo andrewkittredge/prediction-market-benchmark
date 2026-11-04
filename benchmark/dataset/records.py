@@ -1,5 +1,5 @@
 """
-Translates the pandas frame from the `build_dataset.py` query into MLflow
+Translates the pandas frame from the `build.py` query into MLflow
 evaluation-dataset records: `inputs` is what the model sees (everything known
 at `as_of`), `expectations` is what it is scored against, `tags` are copied
 onto the evaluation traces.
