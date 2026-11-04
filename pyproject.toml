@@ -15,6 +15,8 @@ dependencies = [
     "snowflake-snowpark-python>=1.30",
     "sqlalchemy<2.1",
     "statsmodels>=0.15.0",
+    # mlflow.genai.evaluate only shows its progress bar when tqdm is installed
+    "tqdm>=4.67",
 ]
 
 [project.scripts]
