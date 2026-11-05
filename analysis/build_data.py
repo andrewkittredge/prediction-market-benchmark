@@ -49,6 +49,16 @@ def assessment_value(assessments: list, name: str) -> float | None:
     return None
 
 
+def yes_no_to_bool(label: str | None) -> bool | str | None:
+    """A yes/no resolution label as True/False; any other label unchanged."""
+    if label is None:
+        return None
+    normalised = label.strip().lower()
+    if normalised in ("yes", "no"):
+        return normalised == "yes"
+    return label
+
+
 def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     """
     One row per forecast. The record's inputs sit under request["inputs"],
@@ -60,32 +70,38 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             "run": traces["run"],
             "model": traces["request"].map(lambda r: r["model"]),
             "system_prompt": traces["request"].map(lambda r: r["system_prompt"]),
-            # a tag on the child run rather than on the trace, as "YYYY-MM"; taken
-            # as the last day of that month so it compares against as_of
-            "training_data_cutoff": pd.PeriodIndex(
-                traces["run"].map(
-                    dict(
-                        zip(runs["tags.mlflow.runName"], runs["tags.training_data_cutoff"])
-                    )
-                ),
-                freq="M",
-            )
-            .to_timestamp(how="end")
-            .normalize(),
             "exchange": traces["tags"].map(lambda t: t.get("exchange")),
             "category": traces["tags"].map(lambda t: t.get("event_category")),
             "event_type": traces["tags"].map(lambda t: t.get("std_event_type")),
-            "market_title": traces["request"].map(lambda r: r["inputs"]["market_title"]),
+            "market_title": traces["request"].map(
+                lambda r: r["inputs"]["market_title"]
+            ),
             "response": traces["response"].map(lambda r: r and r["raw"]),
-            "as_of": traces["request"].map(lambda r: pd.Timestamp(r["inputs"]["as_of"])),
+            "as_of": traces["request"].map(
+                lambda r: pd.Timestamp(r["inputs"]["as_of"])
+            ),
             "predicted_probability": traces["response"].map(
                 lambda r: r and r["probability"]
             ),
-            # the model's probability that its estimate is within
-            # CONFIDENCE_TOLERANCE of the market price; absent in older runs
+            # the price prompts' confidence is the model's probability that its
+            # estimate is within CONFIDENCE_TOLERANCE of the market price, the
+            # outcome prompts' that its yes/no call is right; absent in older runs
             "confidence": traces["response"].map(lambda r: r and r.get("confidence")),
+            # the outcome prompts' yes/no call; None for the price prompts
+            "predicted_outcome": traces["response"].map(
+                lambda r: r and r.get("outcome")
+            ),
             "market_probability": traces["assessments"].map(
                 lambda a: assessment_value(a, "market_probability")
+            ),
+            # what actually happened; None while the market is unresolved
+            "outcome_occurred": traces["assessments"].map(
+                lambda a: assessment_value(a, "outcome_occurred")
+            ),
+            # the label the market settled on: True/False for yes/no markets,
+            # the winning outcome's name (e.g. "Up", a candidate) otherwise
+            "resolution": traces["assessments"].map(
+                lambda a: yes_no_to_bool(assessment_value(a, "resolution"))
             ),
             "state": traces["state"],
         }

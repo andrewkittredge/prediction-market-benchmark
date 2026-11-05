@@ -29,6 +29,20 @@
             "justMyCode": true
         },
         {
+            "name": "dataset.build (resolved markets)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "benchmark.dataset.build",
+            "args": [
+                "--resolved"
+            ],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "evaluate (smoke, 2 rows)",
             "type": "debugpy",
             "request": "launch",

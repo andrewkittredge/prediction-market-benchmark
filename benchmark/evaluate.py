@@ -10,7 +10,7 @@ predict_agent.py for what it is logged in as.
 
 Each invocation is one parent MLflow run with a nested child run per
 (model, system prompt) pair — every --model crossed with every --prompt
-(default: all of benchmark.prompt.SYSTEM_PROMPTS) — all over the same sample
+(default: all of benchmark.prompt.PROMPTS) — all over the same sample
 of rows.
 
 Results land in the MLflow experiment config.EXPERIMENT_NAME at the
@@ -38,10 +38,12 @@ from mlflow.genai.datasets import get_dataset
 
 from benchmark.config import DATASET_NAME, EXPERIMENT_NAME
 from benchmark.predict_agent import predict_with_agent
-from benchmark.prompt import SYSTEM_PROMPTS
-from benchmark.scorers import squared_error
+from benchmark.prompt import PROMPTS
+from benchmark.scorers import outcome_correct, squared_error, squared_error_vs_outcome
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+# the SDK logs which `claude` binary it runs at INFO on every call
+logging.getLogger("claude_agent_sdk").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -69,10 +71,10 @@ def main() -> None:
     parser.add_argument(
         "--prompt",
         nargs="+",
-        default=list(SYSTEM_PROMPTS),
-        choices=SYSTEM_PROMPTS,
+        default=list(PROMPTS),
+        choices=PROMPTS,
         metavar="PROMPT",
-        help="system prompt(s) from benchmark.prompt.SYSTEM_PROMPTS to sweep; "
+        help="system prompt(s) from benchmark.prompt.PROMPTS to sweep; "
         "default all (%(default)s)",
     )
     parser.add_argument(
@@ -112,7 +114,7 @@ def main() -> None:
                 mlflow.genai.evaluate(
                     data=data,
                     predict_fn=predict_fn,
-                    scorers=[squared_error],
+                    scorers=[squared_error, squared_error_vs_outcome, outcome_correct],
                 )
 
 

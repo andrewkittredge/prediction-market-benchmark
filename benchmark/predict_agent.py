@@ -21,7 +21,7 @@ import mlflow
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
 from benchmark.parse_probability import parse_forecast
-from benchmark.prompt import SYSTEM_PROMPTS, build_forecast_prompt
+from benchmark.prompt import PROMPTS, build_forecast_prompt
 
 TOOLS: list[str] = []
 
@@ -29,7 +29,7 @@ TOOLS: list[str] = []
 async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessage:
     options = ClaudeAgentOptions(
         model=model,
-        system_prompt=SYSTEM_PROMPTS[system_prompt],
+        system_prompt=PROMPTS[system_prompt].system,
         tools=TOOLS,
         allowed_tools=TOOLS,
         setting_sources=[],
@@ -47,7 +47,7 @@ async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessag
 
 @mlflow.trace(name="forecast")
 def predict_with_agent(model: str, system_prompt: str, **inputs: Any) -> dict[str, Any]:
-    prompt = build_forecast_prompt(inputs)
+    prompt = build_forecast_prompt(inputs, PROMPTS[system_prompt].question)
     # evaluate() calls predict_fn from worker threads, each of which gets its
     # own event loop here
     result = asyncio.run(ask_agent(model, system_prompt, prompt))
@@ -58,6 +58,7 @@ def predict_with_agent(model: str, system_prompt: str, **inputs: Any) -> dict[st
     return {
         "probability": forecast.probability,
         "confidence": forecast.confidence,
+        "outcome": forecast.outcome,
         "raw": raw,
         "model": model,
         "num_turns": result.num_turns,

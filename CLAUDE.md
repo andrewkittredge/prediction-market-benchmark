@@ -13,26 +13,33 @@ here is one small uv project:
 - `benchmark/` — the code, installed editable into `.venv` by `uv sync`
   (hatchling builds just this package) so `pyproject.toml` can declare
   console scripts (`build-dataset`, `evaluate`).
-  - `dataset/` — building the evaluation dataset: `build.py` runs
+  - `dataset/` — building the evaluation datasets: `build.py` runs
     `snowflake_markets.fetch_markets()` (the Snowpark query, as a pandas
     frame) → MLflow evaluation records (`records.py`) → an MLflow evaluation
-    dataset (re-running merges into the existing one).
+    dataset (re-running merges into the existing one). `--resolved` builds
+    the second dataset, `config.RESOLVED_DATASET_NAME`: only markets that
+    have resolved, with `market_start`, a `resolved_at` tag (the view's
+    `CLOSED_TIME`) and the `resolution` label.
   - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
     invocation, one child run per `--model` × `--prompt`, all on the same
     fixed-seed sample.
   - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
     `claude-agent-sdk`, no tools. Model and prompt are bound with
     `functools.partial`.
-  - `prompt.py` — `SYSTEM_PROMPTS` (the keys are what `--prompt` accepts)
-    and the user-prompt builder. `parse_probability.py` pulls the number out
+  - `prompt.py` — `PROMPTS` (the keys are what `--prompt` accepts; each pairs
+    a system prompt with the question closing the user prompt, asking either
+    for the market's opening price or for a yes/no call on the outcome, each
+    with a 0-1 confidence) and the
+    user-prompt builder. `parse_probability.py` pulls the number out
     of the reply. `scorers.py` holds the MLflow scorers.
   - `config.py` — `EXPERIMENT_NAME`, `DATASET_NAME` (the scripts' command-line
     defaults) and `SNOWFLAKE_CONNECTION`.
 - `analysis/` — notebooks and their helpers. `run_traces.py` pulls a
   finished sweep back out of MLflow (the parent's child runs, their traces,
   and `load_trace_df`, one row per forecast); `brier_score.ipynb` loads a
-  sweep with it into `trace_df` and regresses error on months past the
-  model's training cutoff.
+  sweep with it into `forecasts` and computes Brier scores by category and
+  model; `calibration.ipynb` does the same load and computes the expected
+  calibration error of the model's stated confidence.
 
 The `STANDARDIZED_MARKETS` view it queries is built by the sibling repo
 `../prediction-markets`, whose `CLAUDE.md` documents the data.
