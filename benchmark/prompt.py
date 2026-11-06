@@ -42,9 +42,6 @@ _OUTCOME_QUESTION = (
     '{"outcome": <true or false>, "confidence": <number between 0 and 1>}.'
 )
 
-_CUTOFF_RULE = """using only information that was available on that date — do
-not use anything you know about what happened afterwards."""
-
 
 @dataclass(frozen=True)
 class Prompt:
@@ -54,15 +51,7 @@ class Prompt:
 
 
 PROMPTS = {
-    "cutoff": Prompt(
-        system=f"""
-You are a careful forecaster. You will be shown a prediction-market question
-and the date the market opened. Estimate the price (a probability between 0
-and 1) that the market opened at for the named outcome on that date,
-{_CUTOFF_RULE} {_PRICE_ANSWER_FORMAT}""",
-        question=_PRICE_QUESTION,
-    ),
-    "no-cutoff": Prompt(
+    "price": Prompt(
         system=f"""
 You are a careful forecaster. You will be shown a prediction-market question
 and the date the market opened. Estimate the price (a probability between 0
@@ -70,15 +59,7 @@ and 1) that the market opened at for the named outcome on that date.
 {_PRICE_ANSWER_FORMAT}""",
         question=_PRICE_QUESTION,
     ),
-    "outcome-cutoff": Prompt(
-        system=f"""
-You are a careful forecaster. You will be shown a prediction-market question
-and the date the market opened. Predict whether the named outcome actually
-occurs, {_CUTOFF_RULE}
-{_OUTCOME_ANSWER_FORMAT}""",
-        question=_OUTCOME_QUESTION,
-    ),
-    "outcome-no-cutoff": Prompt(
+    "outcome": Prompt(
         system=f"""
 You are a careful forecaster. You will be shown a prediction-market question
 and the date the market opened. Predict whether the named outcome actually
