@@ -60,7 +60,7 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 uv sync
 uv run --env-file .env build-dataset --experiment outcome-confidence
 uv run --env-file .env evaluate --experiment outcome-confidence --max-rows 2
-uv run --env-file .env evaluate --experiment price --model claude-haiku-4-5 2025-02-28
+uv run --env-file .env evaluate --experiment price --model claude-haiku-4-5 2025-07-31
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 ```
 

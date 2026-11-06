@@ -4,7 +4,7 @@ Runs an LLM against the forecasting benchmark with mlflow.genai.evaluate.
     cd prediction-market-benchmark
     uv run evaluate --experiment outcome-confidence --max-rows 10
     uv run evaluate --experiment price --model claude-opus-5-5 --model claude-haiku-4-5
-    uv run evaluate --experiment price --model claude-opus-5-5 2026-03-31 --model claude-haiku-4-5 2025-02-28
+    uv run evaluate --experiment price --model claude-opus-5-5 2026-06-30 --model claude-haiku-4-5 2025-07-31
 
 --experiment (benchmark.experiment.EXPERIMENTS) fixes the dataset, the prompt
 and the scorers. Forecasts come from a local Claude Code agent

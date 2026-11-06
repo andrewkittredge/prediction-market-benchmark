@@ -23,11 +23,10 @@ uv sync
 uv run build-dataset --experiment outcome-confidence
 
 # one --model per model; a date after it evaluates that model only on markets
-# that opened after the date (e.g. its training cutoff)
+# that opened after the date (here each model's training data cutoff)
 uv run evaluate --experiment outcome-confidence \
-  --model claude-opus-5-5 2026-03-31 \
-  --model claude-haiku-4-5 2025-02-28 \
-  --run-name outcome-confidence
+  --model claude-opus-5-5 2026-06-30 \
+  --model claude-haiku-4-5 2025-07-31
 
 # browse datasets, evaluation runs and traces at http://localhost:5000
 uv run mlflow server
