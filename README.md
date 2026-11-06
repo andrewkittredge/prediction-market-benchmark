@@ -13,7 +13,7 @@ https://app.snowflake.com/marketplace/providers/GZT1Z3TUXVI/Prediction%20Market%
 Each experiment fixes its dataset, prompt and scorers ([benchmark/experiment.py](benchmark/experiment.py)); pick one with `--experiment`.
 
 - **`price`** — the model estimates the price a market opened at, scored by squared error against that price (and against the outcome, where the market has resolved). Runs on all markets. Analysis: [analysis/brier_score.ipynb](analysis/brier_score.ipynb), Brier scores by category and model.
-- **`outcome-confidence`** — the model makes a yes/no call on whether the outcome occurs and states its confidence, scored by accuracy and Brier score. Runs on resolved markets only. Analysis: [analysis/calibration.ipynb](analysis/calibration.ipynb), the expected calibration error of the stated confidence.
+- **`outcome-confidence`** — the model names the outcome the market resolves to (its `resolution` label: yes/no, up/down, a candidate…) and states its confidence, scored by accuracy and Brier score. Runs on resolved markets only. Analysis: [analysis/calibration.ipynb](analysis/calibration.ipynb), the expected calibration error of the stated confidence.
 
 ## Commands
 
@@ -28,6 +28,7 @@ uv run evaluate --experiment outcome-confidence \
   --model claude-opus-5-5 2026-06-30 \
   --model claude-haiku-4-5 2025-07-31
 
-# browse datasets, evaluation runs and traces at http://localhost:5000
-uv run mlflow server
+# browse datasets, evaluation runs and traces at http://localhost:5000; the
+# server doesn't read MLFLOW_TRACKING_URI, so name the store explicitly
+uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 ```

@@ -67,7 +67,7 @@ def predict_with_agent(model: str, experiment: str, **inputs: Any) -> dict[str, 
     return {
         "probability": forecast.probability,
         "confidence": forecast.confidence,
-        "outcome": forecast.outcome,
+        "resolution": forecast.resolution,
         "raw": raw,
         "model": model,
         "num_turns": result.num_turns,

@@ -15,9 +15,10 @@ Each invocation is one parent MLflow run with a nested child run per
 only evaluated on rows whose as_of is after that date (its training cutoff,
 say); models with the same cutoff, or none, get the same sample of rows.
 
-Results land in the MLflow experiment config.EXPERIMENT_NAME at the
+Results land in the MLflow experiment named after the benchmark experiment
+(--experiment-name to override) at the
 tracking URI; browse them with
-    uv run mlflow-ui
+    uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 """
 
 import argparse
@@ -39,7 +40,6 @@ import mlflow.server.jobs.utils  # noqa: E402,F401
 import pandas as pd
 from mlflow.genai.datasets import get_dataset
 
-from benchmark.config import EXPERIMENT_NAME
 from benchmark.experiment import EXPERIMENTS
 from benchmark.predict_agent import predict_with_agent
 
@@ -92,7 +92,8 @@ def main() -> None:
         "dataset, prompt and scorers",
     )
     parser.add_argument(
-        "--experiment-name", default=EXPERIMENT_NAME, help="MLflow experiment name"
+        "--experiment-name",
+        help="MLflow experiment to record the runs in; default the --experiment key",
     )
     parser.add_argument(
         "--model",
@@ -113,7 +114,7 @@ def main() -> None:
     parser.add_argument("--run-name")
     args = parser.parse_args()
 
-    mlflow.set_experiment(args.experiment_name)
+    mlflow.set_experiment(args.experiment_name or args.experiment)
 
     experiment = EXPERIMENTS[args.experiment]
     dataset = get_dataset(name=experiment.dataset_name)

@@ -1,8 +1,8 @@
 """
 The forecasting prompt texts shown to the model, one pair per experiment (see
 experiment.py): a system prompt naming the task (the market's opening price
-as a probability, or a yes/no call on whether the outcome actually occurs)
-plus the question that closes the user prompt. Both tasks also ask for a 0-1
+as a probability, or the label of the outcome the market resolves to) plus
+the question that closes the user prompt. Both tasks also ask for a 0-1
 confidence in the answer.
 """
 
@@ -12,8 +12,8 @@ MAX_DESCRIPTION_CHARS = 2500
 
 # for the price experiment, the model's "confidence" is its probability that
 # its price estimate lands within this distance of the market's actual
-# opening price; for the outcome experiment it is its probability that its
-# yes/no call is right
+# opening price; for the outcome-confidence experiment it is its probability
+# that its predicted resolution is right
 CONFIDENCE_TOLERANCE = 0.10
 
 _PRICE_ANSWER_FORMAT = f"""Think briefly, then answer on the last line with a single
@@ -30,16 +30,18 @@ PRICE_QUESTION = (
     '"confidence": <number between 0 and 1>}.'
 )
 
-_OUTCOME_ANSWER_FORMAT = """Think briefly, then answer on the last line with a
-single JSON object of the form {"outcome": true, "confidence": 0.8}, where
-"outcome" is true if you predict the outcome occurs (the market resolves to
-it) and false otherwise, and "confidence" is your probability (between 0 and
-1) that this prediction is right."""
+_RESOLUTION_ANSWER_FORMAT = """Think briefly, then answer on the last line with
+a single JSON object of the form {"resolution": "Yes", "confidence": 0.8},
+where "resolution" is the label of the outcome you predict the market resolves
+to ("Yes" or "No" for a yes/no market, otherwise one of the outcome names in
+the question or resolution rules, such as "Up" or a candidate's name) and
+"confidence" is your probability (between 0 and 1) that this prediction is
+right."""
 
-OUTCOME_QUESTION = (
-    "Will this outcome occur, i.e. will the market resolve to it, and how "
-    "confident are you in that prediction? Answer on the last line with "
-    '{"outcome": <true or false>, "confidence": <number between 0 and 1>}.'
+RESOLUTION_QUESTION = (
+    "Which outcome will this market resolve to, and how confident are you in "
+    "that prediction? Answer on the last line with "
+    '{"resolution": "<outcome label>", "confidence": <number between 0 and 1>}.'
 )
 
 
@@ -49,10 +51,10 @@ and the date the market opened. Estimate the price (a probability between 0
 and 1) that the market opened at for the named outcome on that date.
 {_PRICE_ANSWER_FORMAT}"""
 
-OUTCOME_SYSTEM_PROMPT = f"""
+RESOLUTION_SYSTEM_PROMPT = f"""
 You are a careful forecaster. You will be shown a prediction-market question
-and the date the market opened. Predict whether the named outcome actually
-occurs. {_OUTCOME_ANSWER_FORMAT}"""
+and the date the market opened. Predict which outcome the market actually
+resolves to. {_RESOLUTION_ANSWER_FORMAT}"""
 
 
 def build_forecast_prompt(inputs: dict[str, Any], question: str) -> str:

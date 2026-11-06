@@ -54,16 +54,6 @@ def assessment_value(assessments: list, name: str) -> float | None:
     return None
 
 
-def yes_no_to_bool(label: str | None) -> bool | str | None:
-    """A yes/no resolution label as True/False; any other label unchanged."""
-    if label is None:
-        return None
-    normalised = label.strip().lower()
-    if normalised in ("yes", "no"):
-        return normalised == "yes"
-    return label
-
-
 def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     """
     One row per forecast. The record's inputs sit under request["inputs"],
@@ -94,11 +84,13 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             ),
             # the price experiment's confidence is the model's probability that
             # its estimate is within CONFIDENCE_TOLERANCE of the market price,
-            # the outcome experiment's that its yes/no call is right
+            # the outcome-confidence experiment's that its predicted resolution
+            # is right
             "confidence": traces["response"].map(lambda r: r and r.get("confidence")),
-            # the outcome experiment's yes/no call; None for the price experiment
-            "predicted_outcome": traces["response"].map(
-                lambda r: r and r.get("outcome")
+            # the outcome-confidence experiment's predicted resolution label;
+            # None for the price experiment
+            "predicted_resolution": traces["response"].map(
+                lambda r: r and r.get("resolution")
             ),
             "market_probability": traces["assessments"].map(
                 lambda a: assessment_value(a, "market_probability")
@@ -107,10 +99,10 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             "outcome_occurred": traces["assessments"].map(
                 lambda a: assessment_value(a, "outcome_occurred")
             ),
-            # the label the market settled on: True/False for yes/no markets,
-            # the winning outcome's name (e.g. "Up", a candidate) otherwise
+            # the label the market settled on: "yes"/"no" on Kalshi, "Yes"/"No"
+            # or the winning outcome's name (e.g. "Up", a candidate) on Polymarket
             "resolution": traces["assessments"].map(
-                lambda a: yes_no_to_bool(assessment_value(a, "resolution"))
+                lambda a: assessment_value(a, "resolution")
             ),
             "state": traces["state"],
         }

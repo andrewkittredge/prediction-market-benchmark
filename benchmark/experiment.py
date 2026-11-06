@@ -10,12 +10,16 @@ from dataclasses import dataclass
 from mlflow.genai.scorers import Scorer
 
 from benchmark.prompt import (
-    OUTCOME_QUESTION,
-    OUTCOME_SYSTEM_PROMPT,
     PRICE_QUESTION,
     PRICE_SYSTEM_PROMPT,
+    RESOLUTION_QUESTION,
+    RESOLUTION_SYSTEM_PROMPT,
 )
-from benchmark.scorers import outcome_correct, squared_error, squared_error_vs_outcome
+from benchmark.scorers import (
+    resolution_correct,
+    squared_error,
+    squared_error_vs_outcome,
+)
 
 
 @dataclass(frozen=True)
@@ -40,12 +44,13 @@ EXPERIMENTS = {
         question=PRICE_QUESTION,
         scorers=[squared_error, squared_error_vs_outcome],
     ),
-    # a yes/no call on whether the outcome occurs, on resolved markets only
+    # name the outcome the market resolves to (its `resolution` label), with a
+    # confidence, on resolved markets only
     "outcome-confidence": Experiment(
         dataset_name="prediction-markets-resolved",
         resolved_only=True,
-        system_prompt=OUTCOME_SYSTEM_PROMPT,
-        question=OUTCOME_QUESTION,
-        scorers=[outcome_correct, squared_error_vs_outcome],
+        system_prompt=RESOLUTION_SYSTEM_PROMPT,
+        question=RESOLUTION_QUESTION,
+        scorers=[resolution_correct, squared_error_vs_outcome],
     ),
 }

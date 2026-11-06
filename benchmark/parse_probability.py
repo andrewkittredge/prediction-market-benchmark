@@ -12,8 +12,9 @@ _NUMBER_RE = re.compile(r"([0-9]*\.?[0-9]+)\s*(%?)")
 class Forecast:
     probability: float | None
     confidence: float | None
-    # the outcome experiment's yes/no call; None for the price experiment
-    outcome: bool | None
+    # the outcome-confidence experiment's predicted resolution label; None for
+    # the price experiment
+    resolution: str | None
 
 
 def _json_field_re(key: str) -> re.Pattern[str]:
@@ -25,10 +26,8 @@ def _json_field_re(key: str) -> re.Pattern[str]:
 
 _PROBABILITY_RE = _json_field_re("probability")
 _CONFIDENCE_RE = _json_field_re("confidence")
-# a JSON object whose "outcome" is a boolean or a yes/no string
-_OUTCOME_RE = re.compile(
-    r"\{[^{}]*\"outcome\"\s*:\s*\"?(true|false|yes|no)\"?[^{}]*\}", re.IGNORECASE
-)
+# a JSON object whose "resolution" is a string
+_RESOLUTION_RE = re.compile(r"\{[^{}]*\"resolution\"\s*:\s*\"([^\"]*)\"[^{}]*\}")
 
 
 def _as_probability(value: float) -> float:
@@ -83,17 +82,20 @@ def parse_confidence(text: str) -> float | None:
     return _json_field(text, _CONFIDENCE_RE, "confidence")
 
 
-def parse_outcome(text: str) -> bool | None:
-    """The "outcome" of the reply's last JSON object that has one; None when absent."""
-    matches = _OUTCOME_RE.findall(text)
+def parse_resolution(text: str) -> str | None:
+    """
+    The "resolution" of the reply's last JSON object that has one, stripped;
+    None when absent or blank.
+    """
+    matches = _RESOLUTION_RE.findall(text)
     if not matches:
         return None
-    return matches[-1].lower() in ("true", "yes")
+    return matches[-1].strip() or None
 
 
 def parse_forecast(text: str) -> Forecast:
     return Forecast(
         probability=parse_probability(text),
         confidence=parse_confidence(text),
-        outcome=parse_outcome(text),
+        resolution=parse_resolution(text),
     )

@@ -14,8 +14,8 @@ here is one small uv project:
   (hatchling builds just this package) so `pyproject.toml` can declare
   console scripts (`build-dataset`, `evaluate`).
   - `experiment.py` — `EXPERIMENTS`: the two experiments, `price` (estimate
-    the market's opening price) and `outcome-confidence` (a yes/no call on whether the
-    outcome occurs), each an `Experiment` fixing its evaluation dataset, its
+    the market's opening price) and `outcome-confidence` (name the outcome the market
+    resolves to, its `resolution` label), each an `Experiment` fixing its evaluation dataset, its
     prompt and its scorers. The keys are what `--experiment` accepts in both
     scripts.
   - `dataset/` — building the evaluation datasets: `build.py` runs
@@ -36,8 +36,7 @@ here is one small uv project:
     question closing the user prompt, each asking for a 0-1 confidence) and
     the user-prompt builder. `parse_probability.py` pulls the answer out
     of the reply. `scorers.py` holds the MLflow scorers.
-  - `config.py` — `EXPERIMENT_NAME` (the MLflow experiment, `evaluate`'s
-    default) and `SNOWFLAKE_CONNECTION`.
+  - `config.py` — `SNOWFLAKE_CONNECTION`.
 - `analysis/` — notebooks and their helpers. `run_traces.py` pulls a
   finished sweep back out of MLflow (the parent's child runs, their traces,
   and `load_trace_df`, one row per forecast); `brier_score.ipynb` loads a
