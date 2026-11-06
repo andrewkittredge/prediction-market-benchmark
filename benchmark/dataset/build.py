@@ -50,7 +50,8 @@ def main() -> None:
         RESOLVED_DATASET_NAME if args.resolved else DATASET_NAME
     )
 
-    records = mlflow_records_from_pandas(fetch_markets(resolved_only=args.resolved))
+    markets = fetch_markets(resolved_only=args.resolved)
+    records = mlflow_records_from_pandas(markets)
     logger.info("%d records for dataset %r", len(records), dataset_name)
 
     try:
