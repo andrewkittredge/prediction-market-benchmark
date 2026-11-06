@@ -1,6 +1,6 @@
 """
 Pulls a finished evaluate.py sweep back out of MLflow for analysis: the
-parent run's child runs (one per model x system prompt), every trace of each
+parent run's child runs (one per model), every trace of each
 (one per predict call), and the traces flattened into one row per forecast.
 """
 
@@ -69,7 +69,7 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
         {
             "run": traces["run"],
             "model": traces["request"].map(lambda r: r["model"]),
-            "system_prompt": traces["request"].map(lambda r: r["system_prompt"]),
+            "experiment": traces["request"].map(lambda r: r["experiment"]),
             "exchange": traces["tags"].map(lambda t: t.get("exchange")),
             "category": traces["tags"].map(lambda t: t.get("event_category")),
             "event_type": traces["tags"].map(lambda t: t.get("std_event_type")),
@@ -83,11 +83,11 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             "predicted_probability": traces["response"].map(
                 lambda r: r and r["probability"]
             ),
-            # the price prompts' confidence is the model's probability that its
-            # estimate is within CONFIDENCE_TOLERANCE of the market price, the
-            # outcome prompts' that its yes/no call is right; absent in older runs
+            # the price experiment's confidence is the model's probability that
+            # its estimate is within CONFIDENCE_TOLERANCE of the market price,
+            # the outcome experiment's that its yes/no call is right
             "confidence": traces["response"].map(lambda r: r and r.get("confidence")),
-            # the outcome prompts' yes/no call; None for the price prompts
+            # the outcome experiment's yes/no call; None for the price experiment
             "predicted_outcome": traces["response"].map(
                 lambda r: r and r.get("outcome")
             ),

@@ -1,10 +1,11 @@
 """
-Scorers for mlflow.genai.evaluate.
+Scorers for mlflow.genai.evaluate; experiment.py picks which ones each
+experiment runs.
 
 `outputs` is whatever predict_fn returned: {"probability": p, "confidence":
-c, ...} for the price prompts, {"outcome": bool, "confidence": c, ...} for the
-outcome prompts, whose implied probability is c when the call is yes and 1 - c
-otherwise. `expectations` is the record's expectations dict. A scorer returns None to
+c, ...} for the price experiment, {"outcome": bool, "confidence": c, ...} for
+the outcome experiment, whose implied probability is c when the call is yes
+and 1 - c otherwise. `expectations` is the record's expectations dict. A scorer returns None to
 skip a row, which MLflow leaves out of the run's mean.
 """
 
@@ -15,8 +16,8 @@ from mlflow.genai.scorers import scorer
 
 def _probability(outputs: Any) -> float | None:
     """
-    The forecast as a probability of the outcome: the price prompts' own
-    "probability", or the outcome prompts' confidence folded through their
+    The forecast as a probability of the outcome: the price experiment's own
+    "probability", or the outcome experiment's confidence folded through its
     yes/no call. None when neither could be parsed.
     """
     if not isinstance(outputs, dict):
@@ -27,15 +28,6 @@ def _probability(outputs: Any) -> float | None:
     if outcome is None or confidence is None:
         return None
     return float(confidence) if outcome else 1 - float(confidence)
-
-
-@scorer
-def abs_error_vs_market(outputs: Any, expectations: dict) -> float | None:
-    """|p - market_probability|; None when no probability could be parsed."""
-    p = _probability(outputs)
-    if p is None:
-        return None
-    return abs(p - expectations["market_probability"])
 
 
 @scorer(aggregations=["mean"], name="squared_error")
@@ -68,17 +60,11 @@ def squared_error_vs_outcome(outputs: dict, expectations: dict) -> float | None:
 @scorer(aggregations=["mean"], name="outcome_correct")
 def outcome_correct(outputs: dict, expectations: dict) -> float | None:
     """
-    1 if the outcome prompts' yes/no call matched what happened, else 0 (the
-    mean is accuracy); None for the price prompts or an unresolved market.
+    1 if the yes/no call matched what happened, else 0 (the mean is
+    accuracy); None when no call could be parsed.
     """
     call = outputs.get("outcome")
     outcome = expectations.get("outcome_occurred")
     if call is None or outcome is None:
         return None
     return float(call == bool(outcome))
-
-
-@scorer
-def return_output(outputs: Any, expectations: dict) -> float | None:
-    """Return the model's output probability for logging purposes."""
-    return _probability(outputs)

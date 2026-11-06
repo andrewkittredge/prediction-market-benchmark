@@ -13,27 +13,30 @@ here is one small uv project:
 - `benchmark/` — the code, installed editable into `.venv` by `uv sync`
   (hatchling builds just this package) so `pyproject.toml` can declare
   console scripts (`build-dataset`, `evaluate`).
+  - `experiment.py` — `EXPERIMENTS`: the two experiments, `price` (estimate
+    the market's opening price) and `outcome-confidence` (a yes/no call on whether the
+    outcome occurs), each an `Experiment` fixing its evaluation dataset, its
+    prompt and its scorers. The keys are what `--experiment` accepts in both
+    scripts.
   - `dataset/` — building the evaluation datasets: `build.py` runs
     `snowflake_markets.fetch_markets()` (the Snowpark query, as a pandas
-    frame) → MLflow evaluation records (`records.py`) → an MLflow evaluation
-    dataset (re-running merges into the existing one). `--resolved` builds
-    the second dataset, `config.RESOLVED_DATASET_NAME`: only markets that
-    have resolved, with `market_start`, a `resolved_at` tag (the view's
-    `CLOSED_TIME`) and the `resolution` label.
-  - `evaluate.py` — `mlflow.genai.evaluate` sweep: one parent run per
-    invocation, one child run per `--model` × `--prompt`, all on the same
-    fixed-seed sample.
+    frame) → MLflow evaluation records (`records.py`) → the experiment's
+    MLflow evaluation dataset (re-running merges into the existing one). The
+    `outcome-confidence` experiment's dataset holds only markets that have resolved,
+    with `market_start`, a `resolved_at` tag (the view's `CLOSED_TIME`) and
+    the `resolution` label.
+  - `evaluate.py` — `mlflow.genai.evaluate` sweep of one experiment: one
+    parent run per invocation, one child run per `--models` entry, all on
+    the same fixed-seed sample.
   - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
-    `claude-agent-sdk`, no tools. Model and prompt are bound with
+    `claude-agent-sdk`, no tools. Model and experiment key are bound with
     `functools.partial`.
-  - `prompt.py` — `PROMPTS` (the keys are what `--prompt` accepts; each pairs
-    a system prompt with the question closing the user prompt, asking either
-    for the market's opening price or for a yes/no call on the outcome, each
-    with a 0-1 confidence) and the
-    user-prompt builder. `parse_probability.py` pulls the number out
+  - `prompt.py` — the prompt texts (per experiment, a system prompt and the
+    question closing the user prompt, each asking for a 0-1 confidence) and
+    the user-prompt builder. `parse_probability.py` pulls the answer out
     of the reply. `scorers.py` holds the MLflow scorers.
-  - `config.py` — `EXPERIMENT_NAME`, `DATASET_NAME` (the scripts' command-line
-    defaults) and `SNOWFLAKE_CONNECTION`.
+  - `config.py` — `EXPERIMENT_NAME` (the MLflow experiment, `evaluate`'s
+    default) and `SNOWFLAKE_CONNECTION`.
 - `analysis/` — notebooks and their helpers. `run_traces.py` pulls a
   finished sweep back out of MLflow (the parent's child runs, their traces,
   and `load_trace_df`, one row per forecast); `brier_score.ipynb` loads a
@@ -54,15 +57,15 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 
 ```bash
 uv sync
-uv run --env-file .env build-dataset --dataset-name smoke
-uv run --env-file .env evaluate --dataset-name smoke --max-rows 2
-uv run --env-file .env evaluate --dataset-name forecasting-v2 --model claude-haiku-4-5 --prompt no-cutoff
+uv run --env-file .env build-dataset --experiment outcome-confidence
+uv run --env-file .env evaluate --experiment outcome-confidence --max-rows 2
+uv run --env-file .env evaluate --experiment price --models claude-haiku-4-5
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 ```
 
 **Don't launch real evaluation runs unprompted.** Every row is a paid API
 call (there is no stub model). To check the harness, smoke-test with
-`--max-rows 2` on the `smoke` dataset and hand the full command to the user.
+`--max-rows 2` and hand the full command to the user.
 `build-dataset` hits Snowflake and takes a while; leave it to the user too.
 
 ## MLflow

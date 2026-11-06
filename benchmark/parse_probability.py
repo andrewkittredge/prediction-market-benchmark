@@ -12,7 +12,7 @@ _NUMBER_RE = re.compile(r"([0-9]*\.?[0-9]+)\s*(%?)")
 class Forecast:
     probability: float | None
     confidence: float | None
-    # the yes/no call of the outcome prompts; None for the price prompts
+    # the outcome experiment's yes/no call; None for the price experiment
     outcome: bool | None
 
 

@@ -10,8 +10,9 @@ looking up what happened after as_of would leak the answer), and project
 CLAUDE.md and settings are switched off, so the forecast depends only on the
 prompt and the model's own knowledge.
 
-`model` and `system_prompt` are bound with functools.partial in evaluate.py;
-the remaining keyword arguments are the record's inputs.
+`model` and `experiment` (a key of experiment.EXPERIMENTS) are bound with
+functools.partial in evaluate.py; the remaining keyword arguments are the
+record's inputs.
 """
 
 import asyncio
@@ -20,16 +21,17 @@ from typing import Any
 import mlflow
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
+from benchmark.experiment import EXPERIMENTS
 from benchmark.parse_probability import parse_forecast
-from benchmark.prompt import PROMPTS, build_forecast_prompt
+from benchmark.prompt import build_forecast_prompt
 
 TOOLS: list[str] = []
 
 
-async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessage:
+async def _ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessage:
     options = ClaudeAgentOptions(
         model=model,
-        system_prompt=PROMPTS[system_prompt].system,
+        system_prompt=system_prompt,
         tools=TOOLS,
         allowed_tools=TOOLS,
         setting_sources=[],
@@ -46,11 +48,15 @@ async def ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessag
 
 
 @mlflow.trace(name="forecast")
-def predict_with_agent(model: str, system_prompt: str, **inputs: Any) -> dict[str, Any]:
-    prompt = build_forecast_prompt(inputs, PROMPTS[system_prompt].question)
+def predict_with_agent(model: str, experiment: str, **inputs: Any) -> dict[str, Any]:
+    # the experiment's key rather than the Experiment itself, so the trace's
+    # request records just the name
+    settings = EXPERIMENTS[experiment]
+    prompt = build_forecast_prompt(inputs, settings.question)
+    agent_run = _ask_agent(model, settings.system_prompt, prompt)
     # evaluate() calls predict_fn from worker threads, each of which gets its
     # own event loop here
-    result = asyncio.run(ask_agent(model, system_prompt, prompt))
+    result = asyncio.run(agent_run)
     raw = result.result or ""
     if result.is_error:
         raise RuntimeError(f"agent run failed ({result.subtype}): {result.errors}")

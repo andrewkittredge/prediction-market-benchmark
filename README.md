@@ -1,4 +1,4 @@
-# LLM forecasting benchmark
+# LLM Prediction Market Forecasting
 
 Measure how well LLM's forecast prediction market (Kalshi/Polymarket) prices and outcomes.
 
@@ -13,9 +13,14 @@ https://app.snowflake.com/marketplace/providers/GZT1Z3TUXVI/Prediction%20Market%
 ```bash
 uv sync
 
-uv run build-dataset --resolved
+# --experiment is price (estimate the market's opening price) or
+# outcome-confidence (a yes/no call on resolved markets); it fixes the
+# dataset, prompt and scorers
+uv run build-dataset --experiment outcome-confidence
 
-uv run evaluate --dataset-name prediction-markets-resolved --models claude-opus-5-5 claude-haiku-4-5 --prompt outcome-cutoff --run-name outcome-confidence
+uv run evaluate --experiment outcome-confidence \
+  --models claude-opus-5-5 claude-haiku-4-5 \
+  --run-name outcome-confidence
 
 # browse datasets, evaluation runs and traces at http://localhost:5000
 uv run mlflow server
