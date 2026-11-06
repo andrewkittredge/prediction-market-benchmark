@@ -54,12 +54,29 @@ def assessment_value(assessments: list, name: str) -> float | None:
     return None
 
 
+def label_matches(predicted: str | None, actual: str | None) -> bool | None:
+    """Whether a predicted resolution label is the actual one, ignoring case."""
+    if predicted is None or actual is None:
+        return None
+    return predicted.strip().lower() == actual.strip().lower()
+
+
 def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     """
     One row per forecast. The record's inputs sit under request["inputs"],
     the market category is a tag copied onto the trace, and each scorer's
     value is an assessment on the trace.
     """
+    # the outcome-confidence experiment's predicted resolution label; None for
+    # the price experiment
+    predicted_resolution = traces["response"].map(lambda r: r and r.get("resolution"))
+    # the label the market settled on: "yes"/"no" on Kalshi, "Yes"/"No" or the
+    # winning outcome's name (e.g. "Up", a candidate) on Polymarket
+    resolution = traces["assessments"].map(lambda a: assessment_value(a, "resolution"))
+    matches = [
+        label_matches(predicted, actual)
+        for predicted, actual in zip(predicted_resolution, resolution)
+    ]
     return pd.DataFrame(
         {
             "run": traces["run"],
@@ -87,11 +104,7 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             # the outcome-confidence experiment's that its predicted resolution
             # is right
             "confidence": traces["response"].map(lambda r: r and r.get("confidence")),
-            # the outcome-confidence experiment's predicted resolution label;
-            # None for the price experiment
-            "predicted_resolution": traces["response"].map(
-                lambda r: r and r.get("resolution")
-            ),
+            "predicted_resolution": predicted_resolution,
             "market_probability": traces["assessments"].map(
                 lambda a: assessment_value(a, "market_probability")
             ),
@@ -99,11 +112,10 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             "outcome_occurred": traces["assessments"].map(
                 lambda a: assessment_value(a, "outcome_occurred")
             ),
-            # the label the market settled on: "yes"/"no" on Kalshi, "Yes"/"No"
-            # or the winning outcome's name (e.g. "Up", a candidate) on Polymarket
-            "resolution": traces["assessments"].map(
-                lambda a: assessment_value(a, "resolution")
-            ),
+            "resolution": resolution,
+            # whether the predicted resolution matched; <NA> without one (the
+            # price experiment) or while the market is unresolved
+            "correct": pd.array(matches, dtype="boolean"),
             "state": traces["state"],
         }
     )
