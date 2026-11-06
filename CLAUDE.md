@@ -26,8 +26,9 @@ here is one small uv project:
     with `market_start`, a `resolved_at` tag (the view's `CLOSED_TIME`) and
     the `resolution` label.
   - `evaluate.py` — `mlflow.genai.evaluate` sweep of one experiment: one
-    parent run per invocation, one child run per `--models` entry, all on
-    the same fixed-seed sample.
+    parent run per invocation, one child run per `--model` argument
+    (`--model MODEL [YYYY-MM-DD]`, repeated per model; the date restricts
+    that model to rows whose `as_of` is after it), each on a fixed-seed sample.
   - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
     `claude-agent-sdk`, no tools. Model and experiment key are bound with
     `functools.partial`.
@@ -59,7 +60,7 @@ from the `[prediction-markets]` section of `~/.snowflake/connections.toml`
 uv sync
 uv run --env-file .env build-dataset --experiment outcome-confidence
 uv run --env-file .env evaluate --experiment outcome-confidence --max-rows 2
-uv run --env-file .env evaluate --experiment price --models claude-haiku-4-5
+uv run --env-file .env evaluate --experiment price --model claude-haiku-4-5 2025-02-28
 uv run mlflow server --port 5000 --backend-store-uri "$MLFLOW_TRACKING_URI"
 ```
 

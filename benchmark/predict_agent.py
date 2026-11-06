@@ -29,6 +29,9 @@ TOOLS: list[str] = []
 
 
 async def _ask_agent(model: str, system_prompt: str, prompt: str) -> ResultMessage:
+    """
+    Do not allow the agent to use websearch to avoid leaking the answer; the forecast should depend only on the prompt and the model's own knowledge.
+    """
     options = ClaudeAgentOptions(
         model=model,
         system_prompt=system_prompt,
