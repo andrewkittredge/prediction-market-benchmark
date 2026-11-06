@@ -97,6 +97,11 @@ function with explicit parameters bound via `functools.partial`, or a small
 
 Prefer `@dataclass` over `TypedDict`/dicts for structured data.
 
+One expression per line: don't nest a call inside another call's arguments.
+Assign the inner result to a named variable on its own line first, so
+`markets = fetch_markets(...)` then `records = mlflow_records_from_pandas(markets)`,
+not `mlflow_records_from_pandas(fetch_markets(...))`.
+
 In the notebooks (`analysis/`), one statement per cell: each assignment, function
 definition or expression gets its own cell so intermediates can be inspected
 and re-run alone. The notebooks' kernel is this project's `.venv`; their cwd
