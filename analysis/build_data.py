@@ -116,10 +116,19 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
 
 def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataFrame:
     """
-    The flattened forecasts of the sweep `run_name` in `experiment_name`, or
-    of every sweep in it when no `run_name` is given.
+    The scoreable forecasts of the sweep `run_name` in `experiment_name`, or
+    of every sweep in it when no `run_name` is given: one row per trace that
+    returned a confidence (errored traces have no response), minus any
+    predicted resolution that cannot be checked against the market's
+    resolution.
     """
     experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id  # pyright: ignore[reportOptionalMemberAccess]
     runs = child_runs(experiment_id, run_name)
     traces = search_traces(experiment_id, runs)
-    return trace_frame(traces, runs)
+    forecasts = trace_frame(traces, runs)
+    answered = forecasts["confidence"].notna()
+    # the price experiment predicts no resolution, so its `correct` is always
+    # <NA>; only drop a forecast that made a prediction it can't be scored on
+    unscoreable = forecasts["predicted_resolution"].notna() & forecasts["correct"].isna()
+    return forecasts[answered & ~unscoreable].copy()
+
