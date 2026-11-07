@@ -7,6 +7,9 @@ parent run's child runs (one per model), every trace of each
 import mlflow
 import pandas as pd
 
+# number of equal-width confidence bins for the calibration metrics
+CONFIDENCE_BINS = 10
+
 
 def child_runs(experiment_id: str, run_name: str | None) -> pd.DataFrame:
     """
@@ -73,6 +76,9 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "run": traces["run"],
+            # the dataset record (market and priced outcome) the forecast is on
+            "record_id": traces["tags"].map(lambda t: t["record_id"]),
+            "request_time": pd.to_datetime(traces["request_time"], unit="ms"),
             "model": traces["request"].map(lambda r: r["model"]),
             # sweeps from before experiment.py recorded the prompt's name as
             # "system_prompt" instead
@@ -102,9 +108,9 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
                 lambda a: assessment_value(a, "market_probability")
             ),
             # what actually happened; None while the market is unresolved
-            "outcome_occurred": traces["assessments"].map(
-                lambda a: assessment_value(a, "outcome_occurred")
-            ),
+            "outcome_occurred": traces["assessments"]
+            .map(lambda a: assessment_value(a, "outcome_occurred"))
+            .astype(bool),
             "resolution": resolution,
             # whether the predicted resolution matched; <NA> without one (the
             # price experiment) or while the market is unresolved
@@ -120,7 +126,12 @@ def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataF
     of every sweep in it when no `run_name` is given: one row per trace that
     returned a confidence (errored traces have no response), minus any
     predicted resolution that cannot be checked against the market's
-    resolution.
+    resolution. A sweep continued under the same run name re-evaluates the
+    same sample, so each model keeps only its latest forecast per
+    `record_id`. Adds the "yes" view of each forecast: `predicted_yes`, whether
+    the model called the priced outcome, and `p_yes`, its probability of it;
+    and `confidence_bin`, the forecast's bin among `CONFIDENCE_BINS`
+    equal-width confidence bins.
     """
     experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id  # pyright: ignore[reportOptionalMemberAccess]
     runs = child_runs(experiment_id, run_name)
@@ -129,6 +140,23 @@ def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataF
     answered = forecasts["confidence"].notna()
     # the price experiment predicts no resolution, so its `correct` is always
     # <NA>; only drop a forecast that made a prediction it can't be scored on
-    unscoreable = forecasts["predicted_resolution"].notna() & forecasts["correct"].isna()
-    return forecasts[answered & ~unscoreable].copy()
-
+    unscoreable = (
+        forecasts["predicted_resolution"].notna() & forecasts["correct"].isna()
+    )
+    forecasts = forecasts[answered & ~unscoreable]
+    forecasts = forecasts.sort_values("request_time")
+    forecasts = forecasts.drop_duplicates(subset=["model", "record_id"], keep="last")
+    forecasts = forecasts.copy()
+    # the model called the priced outcome: its label was right on a market
+    # where that outcome occurred, or wrong where it didn't; <NA> for the
+    # price experiment
+    forecasts["predicted_yes"] = forecasts["correct"] == forecasts["outcome_occurred"]
+    forecasts["p_yes"] = forecasts["confidence"].where(
+        forecasts["predicted_yes"], 1 - forecasts["confidence"]
+    )
+    breaks = [b / CONFIDENCE_BINS for b in range(CONFIDENCE_BINS + 1)]
+    confidence_bins = pd.IntervalIndex.from_breaks(breaks)
+    forecasts["confidence_bin"] = pd.cut(
+        forecasts["confidence"], confidence_bins, include_lowest=True
+    )
+    return forecasts
