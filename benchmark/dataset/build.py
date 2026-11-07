@@ -1,7 +1,7 @@
 """
 Builds the LLM forecasting benchmark from STANDARDIZED_MARKETS.
 
-One row per (exchange, event_ticker, outcome) in the politics / companies /
+One row per (exchange, event_ticker, market_title, outcome) in the politics / companies /
 finance / elections / economics categories, excluding share-price markets,
 frozen at its first observed price: the model is asked for P(outcome) as of
 that moment and scored against the market's own price and, where the market

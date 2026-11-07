@@ -10,26 +10,19 @@ import pandas as pd
 
 def child_runs(experiment_id: str, run_name: str | None) -> pd.DataFrame:
     """
-    One row per child run of the parent run named `run_name` (of every parent
-    run in the experiment when it is None), with each scorer's mean over the
-    run; the model is only recorded in the run name.
+    One row per child run of every parent run named `run_name` (a sweep
+    continued over several invocations with the same --run-name has several),
+    or of every parent run in the experiment when it is None, with each
+    scorer's mean over the run; the model is only recorded in the run name.
     """
+    runs = mlflow.search_runs(experiment_ids=[experiment_id])
+    # only child runs carry the parentRunId tag, which holds the parent's
+    # run_id, not its name
+    parent_ids = runs["tags.mlflow.parentRunId"]
     if run_name is None:
-        runs = mlflow.search_runs(experiment_ids=[experiment_id])
-        # only child runs carry the parentRunId tag
-        return runs[runs["tags.mlflow.parentRunId"].notna()]
-    # the parentRunId tag holds the parent's run_id, not its name, so look the
-    # parent up by name first
-    parent = mlflow.search_runs(
-        experiment_ids=[experiment_id],
-        filter_string=f"tags.mlflow.runName = '{run_name}'",
-    )
-    if len(parent) != 1:
-        raise ValueError(f"expected one run named {run_name!r}, found {len(parent)}")
-    return mlflow.search_runs(
-        experiment_ids=[experiment_id],
-        filter_string=f"tags.mlflow.parentRunId = '{parent.run_id.iloc[0]}'",
-    )
+        return runs[parent_ids.notna()]
+    parents = runs[runs["tags.mlflow.runName"] == run_name]
+    return runs[parent_ids.isin(parents["run_id"])]
 
 
 def search_traces(experiment_id: str, runs: pd.DataFrame) -> pd.DataFrame:
@@ -126,6 +119,7 @@ def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataF
     The flattened forecasts of the sweep `run_name` in `experiment_name`, or
     of every sweep in it when no `run_name` is given.
     """
-    experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id
+    experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id  # pyright: ignore[reportOptionalMemberAccess]
     runs = child_runs(experiment_id, run_name)
-    return trace_frame(search_traces(experiment_id, runs), runs)
+    traces = search_traces(experiment_id, runs)
+    return trace_frame(traces, runs)

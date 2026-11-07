@@ -1,8 +1,14 @@
 """
 The Snowflake side of the benchmark: the STANDARDIZED_MARKETS query that
-freezes every (exchange, event_ticker, outcome) at its first observed price,
-run through Snowpark and returned as a pandas frame. `resolved_only` keeps
-just the markets that have since resolved.
+freezes every (exchange, event_ticker, market_title, outcome) at its first
+observed price, run through Snowpark and returned as a pandas frame.
+`resolved_only` keeps just the markets that have since resolved.
+
+The view has no market id: an event (event_ticker) can hold many markets
+(the buckets of "how many tweets", each candidate of a race), every one of
+them priced as outcome "Yes", so market_title is part of the key. Without it
+a whole event collapses into one record whose resolution is the max over its
+markets — "Yes" whenever any bucket won.
 """
 
 import pandas as pd
@@ -32,19 +38,19 @@ with markets as (
         market_title,
         market_description,
         min(convert_timezone('UTC', market_start)::timestamp_ntz) over (
-            partition by market, event_ticker, outcome
+            partition by market, event_ticker, market_title, outcome
         ) as market_start,
         convert_timezone('UTC', market_close)::timestamp_ntz as market_close,
         outcome,
         price_time as as_of,
         price as market_probability,
         max(nullif(trim(resolution), '')) over (
-            partition by market, event_ticker, outcome
+            partition by market, event_ticker, market_title, outcome
         ) as resolution,
         max(convert_timezone('UTC', closed_time)::timestamp_ntz) over (
-            partition by market, event_ticker, outcome
+            partition by market, event_ticker, market_title, outcome
         ) as resolved_at,
-        hash(market, event_ticker, outcome) as record_id
+        hash(market, event_ticker, market_title, outcome) as record_id
     from standardized_markets
     where event_category in (
             'politics', 'companies', 'finance', 'elections', 'economics'
@@ -64,14 +70,14 @@ first_price as (
         ) as outcome_occurred
     from markets
     qualify row_number() over (
-        partition by exchange, event_ticker, outcome
+        partition by exchange, event_ticker, market_title, outcome
         order by as_of
     ) = 1
 )
 select *
 from first_price
 where {where}
-order by exchange, event_ticker, outcome
+order by exchange, event_ticker, market_title, outcome
 """
 
 

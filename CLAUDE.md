@@ -37,12 +37,13 @@ here is one small uv project:
     the user-prompt builder. `parse_probability.py` pulls the answer out
     of the reply. `scorers.py` holds the MLflow scorers.
   - `config.py` — `SNOWFLAKE_CONNECTION`.
-- `analysis/` — notebooks and their helpers. `run_traces.py` pulls a
+- `analysis/` — notebooks and their helpers. `build_data.py` pulls a
   finished sweep back out of MLflow (the parent's child runs, their traces,
-  and `load_trace_df`, one row per forecast); `brier_score.ipynb` loads a
-  sweep with it into `forecasts` and computes Brier scores by category and
-  model; `calibration.ipynb` does the same load and computes the expected
-  calibration error of the model's stated confidence.
+  and `load_trace_df`, one row per forecast); `calibration.py` holds the
+  calibration metrics (ECE, MCE and the KalshiBench Table 4 row);
+  `brier_score.ipynb` loads a sweep into `forecasts` and computes Brier
+  scores by category and model; `calibration.ipynb` does the same load and
+  computes the calibration of the model's stated confidence.
 
 The `STANDARDIZED_MARKETS` view it queries is built by the sibling repo
 `../prediction-markets`, whose `CLAUDE.md` documents the data.
@@ -105,9 +106,11 @@ Assign the inner result to a named variable on its own line first, so
 `markets = fetch_markets(...)` then `records = mlflow_records_from_pandas(markets)`,
 not `mlflow_records_from_pandas(fetch_markets(...))`.
 
-In the notebooks (`analysis/`), one statement per cell: each assignment, function
-definition or expression gets its own cell so intermediates can be inspected
-and re-run alone. The notebooks' kernel is this project's `.venv`; their cwd
+In the notebooks (`analysis/`), one statement per cell: each assignment or
+expression gets its own cell so intermediates can be inspected and re-run
+alone. Don't define functions in a notebook: put them in a module under
+`analysis/` (`build_data.py`, `calibration.py`) and import them, so they can
+be reused across notebooks and read without running the kernel. The notebooks' kernel is this project's `.venv`; their cwd
 is the project root (`jupyter.notebookFileRoot` in `.vscode/settings.json`),
 so `benchmark.*` and `analysis.*` import from there. Restart the kernel after
 changing that setting.
