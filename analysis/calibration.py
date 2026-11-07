@@ -89,3 +89,73 @@ def category_table(forecasts: pd.DataFrame) -> pd.DataFrame:
         }
     )
     return table.sort_values("N", ascending=False)
+
+
+def overconfidence_rate(forecasts: pd.DataFrame, threshold: float) -> float:
+    """
+    OCR@threshold (the paper's eq. 6): the share of forecasts with confidence
+    above `threshold` that were wrong.
+    """
+    confident = forecasts[forecasts["confidence"] > threshold]
+    return 1 - confident["correct"].mean()
+
+
+def confidence_metrics(forecasts: pd.DataFrame) -> pd.Series:
+    """
+    One row of the paper's Table 5, the confidence analysis of one model:
+    its average confidence (Avg Conf), its average confidence on the
+    forecasts it got wrong (Conf_wrong), and its overconfidence rate above
+    70%, 80% and 90% confidence (OCR@70, OCR@80, OCR@90), all in percent.
+    The paper reads the table as showing models stay confident when wrong
+    and are wrong far too often when they claim 90%+.
+    """
+    wrong = forecasts[~forecasts["correct"].astype(bool)]
+    return pd.Series(
+        {
+            "Avg Conf": 100 * forecasts["confidence"].mean(),
+            "Conf_wrong": 100 * wrong["confidence"].mean(),
+            "OCR@70": 100 * overconfidence_rate(forecasts, 0.7),
+            "OCR@80": 100 * overconfidence_rate(forecasts, 0.8),
+            "OCR@90": 100 * overconfidence_rate(forecasts, 0.9),
+        }
+    )
+
+
+# upper edges, in days, of the horizon buckets of `horizon_table`
+HORIZON_DAYS = [0, 30, 60, 90, 180, 365, float("inf")]
+
+
+def horizon_table(forecasts: pd.DataFrame) -> pd.DataFrame:
+    """
+    Accuracy and confidence as a function of how far past the model's
+    training cutoff the market closed: per model and bucket of days from
+    `cutoff` to `market_close` (`HORIZON_DAYS`), the number of forecasts (N),
+    accuracy and average confidence in percent, and the ECE. A widening gap
+    between Acc and Avg Conf, or a rising ECE, with the horizon means the
+    model's confidence doesn't account for how far it is forecasting past
+    what it knows.
+    """
+    horizon = (forecasts["market_close"] - forecasts["cutoff"]).dt.days
+    bucket = pd.cut(horizon, HORIZON_DAYS, include_lowest=True)
+    return accuracy_and_confidence(forecasts, ["model", bucket])
+
+
+def category_accuracy_table(forecasts: pd.DataFrame) -> pd.DataFrame:
+    """
+    Accuracy and confidence per model and market category: the number of
+    forecasts (N), accuracy and average confidence in percent, and the ECE.
+    """
+    return accuracy_and_confidence(forecasts, ["model", "category"])
+
+
+def accuracy_and_confidence(forecasts: pd.DataFrame, by: list) -> pd.DataFrame:
+    """N, Acc, Avg Conf (percent) and ECE of `forecasts` grouped by `by`."""
+    groups = forecasts.groupby(by, observed=True)
+    return pd.DataFrame(
+        {
+            "N": groups.size(),
+            "Acc": 100 * groups["correct"].mean(),
+            "Avg Conf": 100 * groups["confidence"].mean(),
+            "ECE": groups.apply(expected_calibration_error, include_groups=False),
+        }
+    )

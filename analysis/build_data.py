@@ -29,16 +29,20 @@ def child_runs(experiment_id: str, run_name: str | None) -> pd.DataFrame:
 
 
 def search_traces(experiment_id: str, runs: pd.DataFrame) -> pd.DataFrame:
-    """Every trace of every run in `runs`, tagged with the run it came from."""
-    return pd.concat(
-        [
-            mlflow.search_traces(locations=[experiment_id], run_id=run_id).assign(
-                run=name
-            )
-            for run_id, name in zip(runs["run_id"], runs["tags.mlflow.runName"])
-        ],
-        ignore_index=True,
-    )
+    """
+    Every trace of every run in `runs`, tagged with the run it came from and
+    the run's model cutoff date (the `cutoff` param, None when the model was
+    evaluated on every row).
+    """
+    frames = [
+        mlflow.search_traces(locations=[experiment_id], run_id=run_id).assign(
+            run=name, cutoff=cutoff
+        )
+        for run_id, name, cutoff in zip(
+            runs["run_id"], runs["tags.mlflow.runName"], runs["params.cutoff"]
+        )
+    ]
+    return pd.concat(frames, ignore_index=True)
 
 
 def assessment_value(assessments: list, name: str) -> float | None:
@@ -76,6 +80,8 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "run": traces["run"],
+            # the model's training cutoff the run was restricted to
+            "cutoff": pd.to_datetime(traces["cutoff"]),
             # the dataset record (market and priced outcome) the forecast is on
             "record_id": traces["tags"].map(lambda t: t["record_id"]),
             "request_time": pd.to_datetime(traces["request_time"], unit="ms"),
@@ -94,6 +100,9 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             "response": traces["response"].map(lambda r: r and r["raw"]),
             "as_of": traces["request"].map(
                 lambda r: pd.Timestamp(r["inputs"]["as_of"])
+            ),
+            "market_close": traces["request"].map(
+                lambda r: pd.Timestamp(r["inputs"]["market_close"])
             ),
             "predicted_probability": traces["response"].map(
                 lambda r: r and r["probability"]
