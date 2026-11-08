@@ -28,7 +28,10 @@ here is one small uv project:
   - `evaluate.py` — `mlflow.genai.evaluate` sweep of one experiment: one
     parent run per invocation, one child run per `--model` argument
     (`--model MODEL [YYYY-MM-DD]`, repeated per model; the date restricts
-    that model to rows whose `as_of` is after it), each on a fixed-seed sample.
+    that model to rows whose `as_of` is after it), each on a fixed-seed sample
+    of `--max-rows` rows balanced across market categories. Re-running with
+    an existing `--run-name` continues that sweep: rows a model already has a
+    successful trace for are skipped, so traces are never duplicated.
   - `predict_agent.py` — the `predict_fn`: a local Claude Code agent via
     `claude-agent-sdk`, no tools. Model and experiment key are bound with
     `functools.partial`.

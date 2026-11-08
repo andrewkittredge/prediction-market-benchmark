@@ -14,6 +14,14 @@ Each invocation is one parent MLflow run with a nested child run per
 --model argument. A model given with a date (--model MODEL YYYY-MM-DD) is
 only evaluated on rows whose as_of is after that date (its training cutoff,
 say); models with the same cutoff, or none, get the same sample of rows.
+--max-rows draws a seeded sample balanced across market categories: an equal
+share (at least one row) per category, a category with fewer rows than its
+share contributing all it has.
+
+Re-running with the --run-name of an earlier sweep continues it: each model
+skips the rows of its sample that already have a successful trace under that
+sweep, so only missing rows (and rows whose trace errored) are evaluated and
+no forecast is duplicated.
 
 Results land in the MLflow experiment named after the benchmark experiment
 (--experiment-name to override) at the
@@ -82,6 +90,48 @@ def after_cutoff(data: pd.DataFrame, cutoff: date) -> pd.Series:
     return as_of > pd.Timestamp(cutoff)
 
 
+def balanced_sample(data: pd.DataFrame, max_rows: int) -> pd.DataFrame:
+    """
+    A seeded sample of about `max_rows` rows with an equal share (at least
+    one row) from each market category, the record's event_category tag; a
+    category with fewer rows than its share contributes all of them.
+    """
+    category = data["tags"].map(lambda tags: tags["event_category"])
+    share = max(1, max_rows // category.nunique())
+    by_category = data.groupby(category, group_keys=False)
+    return by_category.apply(sample_up_to, share)
+
+
+def sample_up_to(rows: pd.DataFrame, n: int) -> pd.DataFrame:
+    return rows.sample(n=min(n, len(rows)), random_state=0)
+
+
+def answered_record_ids(
+    experiment_id: str, run_name: str, child_run_name: str
+) -> set[str]:
+    """
+    The record_ids with a successful trace in any child run named
+    `child_run_name` of any parent run named `run_name`: what an earlier
+    invocation of this sweep already forecast for that model.
+    """
+    runs = mlflow.search_runs(experiment_ids=[experiment_id])
+    if runs.empty:
+        return set()
+    parents = runs[runs["tags.mlflow.runName"] == run_name]
+    is_child = runs["tags.mlflow.parentRunId"].isin(parents["run_id"])
+    children = runs[is_child & (runs["tags.mlflow.runName"] == child_run_name)]
+    answered = set()
+    for run_id in children["run_id"]:
+        traces = mlflow.search_traces(
+            locations=[experiment_id],
+            run_id=run_id,
+            filter_string="trace.status = 'OK'",
+            max_results=100_000,
+        )
+        answered.update(traces["tags"].map(lambda tags: tags["record_id"]))
+    return answered
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])  # pyright: ignore[reportOptionalMemberAccess]
     parser.add_argument(
@@ -109,12 +159,12 @@ def main() -> None:
         "--max-rows",
         type=int,
         default=None,
-        help="Limit the number of rows to evaluate",
+        help="Limit the number of rows to evaluate, split evenly across market categories",
     )
     parser.add_argument("--run-name")
     args = parser.parse_args()
 
-    mlflow.set_experiment(args.experiment_name or args.experiment)
+    mlflow_experiment = mlflow.set_experiment(args.experiment_name or args.experiment)
 
     experiment = EXPERIMENTS[args.experiment]
     dataset = get_dataset(name=experiment.dataset_name)
@@ -128,13 +178,25 @@ def main() -> None:
             model_data = data
             if model.cutoff:
                 model_data = data[after_cutoff(data, model.cutoff)]
-            if max_rows := args.max_rows:
-                sample_size = min(max_rows, len(model_data))
-                model_data = model_data.sample(n=sample_size, random_state=0)
+            if args.max_rows:
+                model_data = balanced_sample(model_data, args.max_rows)
+            child_run_name = f"{model.name}-{args.experiment}"
+            answered = answered_record_ids(
+                mlflow_experiment.experiment_id, run_name, child_run_name
+            )
+            record_ids = model_data["tags"].map(lambda tags: tags["record_id"])
+            model_data = model_data[~record_ids.isin(answered)]
+            logger.info(
+                "%s: %d rows to evaluate, %d already answered in %s",
+                model.name,
+                len(model_data),
+                len(answered),
+                run_name,
+            )
+            if model_data.empty:
+                continue
             predict_fn = partial(predict_with_agent, model.name, args.experiment)
-            with mlflow.start_run(
-                run_name=f"{model.name}-{args.experiment}", nested=True
-            ):
+            with mlflow.start_run(run_name=child_run_name, nested=True):
                 mlflow.set_active_model(name=model.name)
                 mlflow.log_params(
                     {"experiment": args.experiment, "cutoff": model.cutoff}
