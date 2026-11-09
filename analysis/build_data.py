@@ -63,9 +63,18 @@ def label_matches(predicted: str | None, actual: str | None) -> bool | None:
 
 def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     """
-    One row per forecast. The record's inputs sit under request["inputs"],
-    the market category is a tag copied onto the trace, and each scorer's
-    value is an assessment on the trace.
+    One row per scoreable forecast, with only the columns `calibration.ipynb`
+    uses. The record's inputs sit under request["inputs"], the market
+    category is a tag copied onto the trace, and each scorer's value is an
+    assessment on the trace.
+
+    Keeps the traces that returned a confidence, minus any predicted
+    resolution that cannot be checked against the market's resolution. A
+    sweep continued under the same run name re-evaluates the same sample, so
+    each model keeps only its latest forecast per `record_id`. Adds the "yes"
+    view of each forecast: `predicted_yes`, whether the model called the
+    priced outcome, and `p_yes`, its probability of it; and `confidence_bin`,
+    the forecast's bin among `CONFIDENCE_BINS` equal-width confidence bins.
     """
     # the outcome-confidence experiment's predicted resolution label; None for
     # the price experiment
@@ -77,35 +86,17 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
         label_matches(predicted, actual)
         for predicted, actual in zip(predicted_resolution, resolution)
     ]
-    return pd.DataFrame(
+    forecasts = pd.DataFrame(
         {
-            "run": traces["run"],
             # the model's training cutoff the run was restricted to
             "cutoff": pd.to_datetime(traces["cutoff"]),
             # the dataset record (market and priced outcome) the forecast is on
             "record_id": traces["tags"].map(lambda t: t["record_id"]),
             "request_time": pd.to_datetime(traces["request_time"], unit="ms"),
             "model": traces["request"].map(lambda r: r["model"]),
-            # sweeps from before experiment.py recorded the prompt's name as
-            # "system_prompt" instead
-            "experiment": traces["request"].map(
-                lambda r: r.get("experiment") or r["system_prompt"]
-            ),
-            "exchange": traces["tags"].map(lambda t: t.get("exchange")),
             "category": traces["tags"].map(lambda t: t.get("event_category")),
-            "event_type": traces["tags"].map(lambda t: t.get("std_event_type")),
-            "market_title": traces["request"].map(
-                lambda r: r["inputs"]["market_title"]
-            ),
-            "response": traces["response"].map(lambda r: r and r["raw"]),
-            "as_of": traces["request"].map(
-                lambda r: pd.Timestamp(r["inputs"]["as_of"])
-            ),
             "market_close": traces["request"].map(
                 lambda r: pd.Timestamp(r["inputs"]["market_close"])
-            ),
-            "predicted_probability": traces["response"].map(
-                lambda r: r and r["probability"]
             ),
             # the price experiment's confidence is the model's probability that
             # its estimate is within CONFIDENCE_TOLERANCE of the market price,
@@ -113,39 +104,15 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             # is right
             "confidence": traces["response"].map(lambda r: r and r.get("confidence")),
             "predicted_resolution": predicted_resolution,
-            "market_probability": traces["assessments"].map(
-                lambda a: assessment_value(a, "market_probability")
-            ),
             # what actually happened; None while the market is unresolved
             "outcome_occurred": traces["assessments"]
             .map(lambda a: assessment_value(a, "outcome_occurred"))
             .astype(bool),
-            "resolution": resolution,
             # whether the predicted resolution matched; <NA> without one (the
             # price experiment) or while the market is unresolved
             "correct": pd.array(matches, dtype="boolean"),
-            "state": traces["state"],
         }
     )
-
-
-def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataFrame:
-    """
-    The scoreable forecasts of the sweep `run_name` in `experiment_name`, or
-    of every sweep in it when no `run_name` is given: one row per trace that
-    returned a confidence (errored traces have no response), minus any
-    predicted resolution that cannot be checked against the market's
-    resolution. A sweep continued under the same run name re-evaluates the
-    same sample, so each model keeps only its latest forecast per
-    `record_id`. Adds the "yes" view of each forecast: `predicted_yes`, whether
-    the model called the priced outcome, and `p_yes`, its probability of it;
-    and `confidence_bin`, the forecast's bin among `CONFIDENCE_BINS`
-    equal-width confidence bins.
-    """
-    experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id  # pyright: ignore[reportOptionalMemberAccess]
-    runs = child_runs(experiment_id, run_name)
-    traces = search_traces(experiment_id, runs)
-    forecasts = trace_frame(traces, runs)
     answered = forecasts["confidence"].notna()
     # the price experiment predicts no resolution, so its `correct` is always
     # <NA>; only drop a forecast that made a prediction it can't be scored on
@@ -169,3 +136,24 @@ def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataF
         forecasts["confidence"], confidence_bins, include_lowest=True
     )
     return forecasts
+
+
+def load_trace_df(experiment_name: str, run_name: str | None = None) -> pd.DataFrame:
+    """
+    The scoreable forecasts (see `trace_frame`) of the sweep `run_name` in
+    `experiment_name`, or of every sweep in it when no `run_name` is given,
+    from the traces that didn't error and carry a `record_id` tag.
+    """
+    experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id  # pyright: ignore[reportOptionalMemberAccess]
+    runs = child_runs(experiment_id, run_name)
+    traces = search_traces(experiment_id, runs)
+    traces = traces[traces["state"] != "ERROR"]
+    # a few early traces predate the record_id tag and can't be matched to a
+    # dataset record
+    has_record_id = traces["tags"].map(lambda t: "record_id" in t)
+    traces = traces[has_record_id]
+    return trace_frame(traces, runs)
+
+
+if __name__ == "__main__":
+    load_trace_df("outcome-confidence", run_name="2k-balanced")
