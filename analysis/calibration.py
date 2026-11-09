@@ -5,7 +5,9 @@ https://arxiv.org/pdf/2512.16030 (KalshiBench). `forecasts` is the frame
 a `confidence_bin` column (`pd.cut` of `confidence`).
 """
 
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.lines import Line2D
 from sklearn.metrics import f1_score
 
 
@@ -140,12 +142,154 @@ def horizon_table(forecasts: pd.DataFrame) -> pd.DataFrame:
     return accuracy_and_confidence(forecasts, ["model", bucket])
 
 
+def horizon_label(bucket: pd.Interval) -> str:
+    """A `HORIZON_DAYS` bucket as an axis tick: "0–30", ..., ">365"."""
+    if bucket.right == float("inf"):
+        return f">{bucket.left:g}"
+    left = max(bucket.left, 0)
+    return f"{left:g}–{bucket.right:g}"
+
+
+# one hue per model, in fixed order (the dataviz skill's categorical slots 1-3)
+MODEL_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]
+
+
+def horizon_plot(table: pd.DataFrame) -> plt.Figure:
+    """
+    `horizon_table` as a figure: three panels sharing the horizon-bucket
+    axis, one each for accuracy, average confidence and ECE, with a line per
+    model. Buckets sit at equal spacing although their widths differ. The
+    models' cutoffs differ while the markets are shared, so each model covers
+    its own range of horizons.
+    """
+    models = table.index.get_level_values(0).unique()
+    buckets = table.index.get_level_values(1).unique().sort_values()
+    positions = list(range(len(buckets)))
+    fig, axes = plt.subplots(3, 1, sharex=True, figsize=(8, 8))
+    panels = [("Acc", "accuracy (%)"), ("Avg Conf", "avg confidence (%)"), ("ECE", "ECE")]
+    for ax, (column, ylabel) in zip(axes, panels):
+        for model, color in zip(models, MODEL_COLORS):
+            rows = table.xs(model).reindex(buckets)
+            ax.plot(positions, rows[column], color=color, marker="o", label=model)
+        ax.set_ylabel(ylabel)
+        ax.set_ylim(0, None)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.grid(axis="y", color="0.9")
+        ax.set_axisbelow(True)
+    axes[0].set_ylim(0, 100)
+    axes[1].set_ylim(0, 100)
+    axes[0].legend(frameon=False)
+    axes[0].set_title("Accuracy, confidence and calibration by forecast horizon")
+    axes[-1].set_xlabel("days from model cutoff to market close")
+    axes[-1].set_xticks(positions)
+    labels = [horizon_label(b) for b in buckets]
+    axes[-1].set_xticklabels(labels)
+    fig.tight_layout()
+    return fig
+
+
+def reliability_plot(reliability: pd.DataFrame) -> plt.Figure:
+    """
+    Reliability diagram of the notebook's `reliability` frame (per model and
+    confidence bin: `n`, `conf` and `acc`): each bin's mean confidence
+    against its accuracy, one line per model, with the marker area scaled
+    by the bin's size and the diagonal as perfect calibration. A point below
+    the diagonal is an overconfident bin, above it an underconfident one;
+    its vertical distance to the diagonal is the gap ECE averages.
+    """
+    models = reliability.index.get_level_values(0).unique()
+    largest_bin = reliability["n"].max()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.plot([0, 1], [0, 1], color="0.6", linestyle=":", zorder=1)
+    for model, color in zip(models, MODEL_COLORS):
+        rows = reliability.xs(model)
+        ax.plot(rows["conf"], rows["acc"], color=color, label=model, zorder=2)
+        sizes = 20 + 300 * rows["n"] / largest_bin
+        ax.scatter(
+            rows["conf"],
+            rows["acc"],
+            s=sizes,
+            color=color,
+            edgecolor="white",
+            linewidth=1,
+            zorder=3,
+        )
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    ax.set_xlabel("mean confidence in bin")
+    ax.set_ylabel("accuracy in bin")
+    ax.set_title("Reliability diagram (marker area ∝ forecasts in bin)")
+    ax.legend(frameon=False, loc="upper left")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.grid(color="0.9")
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    return fig
+
+
 def category_accuracy_table(forecasts: pd.DataFrame) -> pd.DataFrame:
     """
     Accuracy and confidence per model and market category: the number of
     forecasts (N), accuracy and average confidence in percent, and the ECE.
     """
     return accuracy_and_confidence(forecasts, ["model", "category"])
+
+
+def category_plot(table: pd.DataFrame) -> plt.Figure:
+    """
+    `category_accuracy_table` as a dumbbell chart: one panel per model, one
+    row per market category, a filled dot at the accuracy and a hollow dot at
+    the average confidence joined by a line, so the line is the gap between
+    them (confidence to the right of accuracy means overconfidence). The
+    number of forecasts is printed at the right of each row, since models
+    cover the categories unevenly.
+    """
+    models = table.index.get_level_values(0).unique()
+    categories = table.index.get_level_values(1).unique().sort_values()
+    positions = list(range(len(categories)))
+    fig, axes = plt.subplots(
+        1, len(models), sharey=True, figsize=(3.2 * len(models), 4)
+    )
+    for ax, model, color in zip(axes, models, MODEL_COLORS):
+        rows = table.xs(model).reindex(categories)
+        ax.hlines(positions, rows["Acc"], rows["Avg Conf"], color=color, linewidth=2)
+        ax.scatter(rows["Acc"], positions, color=color, s=60, zorder=3)
+        ax.scatter(
+            rows["Avg Conf"],
+            positions,
+            facecolor="white",
+            edgecolor=color,
+            linewidth=2,
+            s=60,
+            zorder=3,
+        )
+        for position, n in zip(positions, rows["N"]):
+            if pd.notna(n):
+                ax.text(102, position, f"n={n:.0f}", va="center", fontsize=8, color="0.4")
+        ax.set_title(model, fontsize=10)
+        ax.set_xlim(40, 100)
+        ax.set_xlabel("%")
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.grid(axis="x", color="0.9")
+        ax.set_axisbelow(True)
+    axes[0].set_yticks(positions)
+    axes[0].set_yticklabels(categories)
+    axes[0].invert_yaxis()
+    filled = Line2D([], [], color="0.4", marker="o", linestyle="", label="accuracy")
+    hollow = Line2D(
+        [],
+        [],
+        markeredgecolor="0.4",
+        markerfacecolor="white",
+        marker="o",
+        linestyle="",
+        label="avg confidence",
+    )
+    fig.legend(handles=[filled, hollow], loc="lower center", ncol=2, frameon=False)
+    fig.suptitle("Accuracy vs. confidence by market category")
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    return fig
 
 
 def accuracy_and_confidence(forecasts: pd.DataFrame, by: list) -> pd.DataFrame:
