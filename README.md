@@ -4,6 +4,8 @@ Benchmark LLM model forecasting of prediction markets (Polymarket/Kalshi) outcom
 
 After Lukas Nel's https://arxiv.org/pdf/2512.16030
 
+Uses MLFlow to prompt models to predict the outcome of prediction markets. 
+
 ## Dataset
 
 https://app.snowflake.com/marketplace/providers/GZT1Z3TUXVI/Prediction%20Market%20Data
@@ -19,6 +21,7 @@ Each experiment fixes its dataset, prompt and scorers ([benchmark/experiment.py]
 ```bash
 uv sync
 
+# Create the MLflow dataset.
 uv run build-dataset --experiment outcome-confidence
 
 # one --model per model; a date after it evaluates that model only on markets
