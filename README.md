@@ -34,7 +34,6 @@ uv run evaluate --experiment outcome-confidence \
   --model claude-haiku-4-5 2025-07-31 \
   --model claude-fable-5-1 2026-06-30
 
-# browse datasets, evaluation runs and traces at http://localhost:5000; the
-# server doesn't read MLFLOW_TRACKING_URI, so name the store explicitly
+# browse datasets, evaluation runs and traces  
 uv run mlflow server
 ```
