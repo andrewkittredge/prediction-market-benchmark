@@ -54,13 +54,6 @@ def assessment_value(assessments: list, name: str) -> float | None:
     return None
 
 
-def label_matches(predicted: str | None, actual: str | None) -> bool | None:
-    """Whether a predicted resolution label is the actual one, ignoring case."""
-    if predicted is None or actual is None:
-        return None
-    return predicted.strip().lower() == actual.strip().lower()
-
-
 def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     """
     One row per scoreable forecast, with only the columns `calibration.ipynb`
@@ -79,13 +72,13 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
     # the outcome-confidence experiment's predicted resolution label; None for
     # the price experiment
     predicted_resolution = traces["response"].map(lambda r: r and r.get("resolution"))
-    # the label the market settled on: "yes"/"no" on Kalshi, "Yes"/"No" or the
-    # winning outcome's name (e.g. "Up", a candidate) on Polymarket
-    resolution = traces["assessments"].map(lambda a: assessment_value(a, "resolution"))
-    matches = [
-        label_matches(predicted, actual)
-        for predicted, actual in zip(predicted_resolution, resolution)
-    ]
+    # the `resolution_correct` scorer's 1.0/0.0, absent (None) for the price
+    # experiment, an unparsed label or an unresolved market
+    resolution_correct = (
+        traces["assessments"]
+        .map(lambda a: assessment_value(a, "resolution_correct"))
+        .astype(bool)
+    )
     forecasts = pd.DataFrame(
         {
             # the model's training cutoff the run was restricted to
@@ -110,7 +103,7 @@ def trace_frame(traces: pd.DataFrame, runs: pd.DataFrame) -> pd.DataFrame:
             .astype(bool),
             # whether the predicted resolution matched; <NA> without one (the
             # price experiment) or while the market is unresolved
-            "correct": pd.array(matches, dtype="boolean"),
+            "correct": resolution_correct,
         }
     )
     answered = forecasts["confidence"].notna()
