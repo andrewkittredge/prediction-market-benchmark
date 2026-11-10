@@ -2,7 +2,10 @@
 
 Benchmark LLM model forecasting of prediction markets (Polymarket/Kalshi) outcomes.
 
-After Lukas Nel's https://arxiv.org/pdf/2512.16030
+After Lukas Nel's [Do Large Language Models Know What They Don’t
+Know?
+Evaluating Epistemic Calibration via Prediction
+Markets](https://arxiv.org/pdf/2512.16030)
 
 Uses MLFlow to prompt models to predict the outcome of prediction markets. 
 
